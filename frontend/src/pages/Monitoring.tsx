@@ -1,10 +1,36 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Activity, RefreshCw } from 'lucide-react';
+import {
+  Box,
+  Card,
+  CardContent,
+  Button,
+  Typography,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  Chip,
+  CircularProgress,
+  FormControlLabel,
+  Checkbox,
+  IconButton,
+  useTheme,
+  alpha,
+  Grid,
+} from '@mui/material';
+import {
+  Timeline as ActivityIcon,
+  Refresh as RefreshIcon,
+} from '@mui/icons-material';
 import { monitoringApi, connectionsApi, type ActiveQuery } from '../api/client';
 import PageLayout from '../components/PageLayout';
 
 export default function Monitoring() {
+  const theme = useTheme();
   const { connId } = useParams<{ connId: string }>();
   const navigate = useNavigate();
   const [connectionName, setConnectionName] = useState('');
@@ -158,162 +184,203 @@ export default function Monitoring() {
     return sql;
   };
 
+  const averageTime = queries.length > 0
+    ? Math.round(queries.reduce((acc, q) => acc + q.elapsedTime, 0) / queries.length)
+    : 0;
+
+  const maxTime = queries.length > 0
+    ? Math.max(...queries.map((q) => q.elapsedTime))
+    : 0;
+
   return (
     <PageLayout 
       title={`Monitoramento: ${connectionName}`}
       backUrl="/connections"
       actions={
-        <>
-          <label className="flex items-center gap-1 text-xs">
-            <input
-              type="checkbox"
-              checked={autoRefresh}
-              onChange={(e) => setAutoRefresh(e.target.checked)}
-              className="mr-1"
-            />
-            <span className="text-gray-700 dark:text-gray-300">
-              Auto-refresh
-            </span>
-          </label>
-          <button 
-            onClick={loadQueries} 
-            className="btn btn-secondary flex items-center gap-1 text-xs px-1.5 py-0.5"
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={autoRefresh}
+                onChange={(e) => setAutoRefresh(e.target.checked)}
+                size="small"
+              />
+            }
+            label={
+              <Typography variant="caption" sx={{ fontSize: '0.75rem' }}>
+                Auto-refresh
+              </Typography>
+            }
+          />
+          <Button
+            onClick={loadQueries}
+            variant="outlined"
+            size="small"
+            startIcon={<RefreshIcon fontSize="small" />}
+            sx={{
+              px: 1.5,
+              py: 0.25,
+              minHeight: 'auto',
+              fontSize: '0.6875rem',
+              fontWeight: 500,
+              textTransform: 'none',
+              borderRadius: 1.5,
+              borderColor: theme.palette.divider,
+              color: theme.palette.text.primary,
+              '&:hover': {
+                borderColor: theme.palette.divider,
+                backgroundColor: alpha(theme.palette.action.hover, 0.04),
+              },
+            }}
           >
-            <RefreshCw className="h-3 w-3" />
             Atualizar
-          </button>
-        </>
+          </Button>
+        </Box>
       }
     >
+      <Grid container spacing={2} sx={{ mb: 3 }}>
+        <Grid item xs={12} md={4}>
+          <Card>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <ActivityIcon sx={{ fontSize: 32, color: 'primary.main', mr: 2 }} />
+                <Box>
+                  <Typography variant="caption" color="text.secondary">
+                    Queries Ativas
+                  </Typography>
+                  <Typography variant="h4" fontWeight={700}>
+                    {queries.length}
+                  </Typography>
+                </Box>
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-        <div className="card">
-          <div className="flex items-center">
-            <Activity className="h-8 w-8 text-blue-600 mr-3" />
-            <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Queries Ativas</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {queries.length}
-              </p>
-            </div>
-          </div>
-        </div>
+        <Grid item xs={12} md={4}>
+          <Card>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <ActivityIcon sx={{ fontSize: 32, color: 'success.main', mr: 2 }} />
+                <Box>
+                  <Typography variant="caption" color="text.secondary">
+                    Tempo Médio
+                  </Typography>
+                  <Typography variant="h4" fontWeight={700}>
+                    {formatDuration(averageTime)}
+                  </Typography>
+                </Box>
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
 
-        <div className="card">
-          <div className="flex items-center">
-            <Activity className="h-8 w-8 text-green-600 mr-3" />
-            <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Tempo Médio</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {queries.length > 0
-                  ? formatDuration(
-                      Math.round(
-                        queries.reduce((acc, q) => acc + q.elapsedTime, 0) / queries.length
-                      )
-                    )
-                  : '0s'}
-              </p>
-            </div>
-          </div>
-        </div>
+        <Grid item xs={12} md={4}>
+          <Card>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <ActivityIcon sx={{ fontSize: 32, color: 'error.main', mr: 2 }} />
+                <Box>
+                  <Typography variant="caption" color="text.secondary">
+                    Mais Longa
+                  </Typography>
+                  <Typography variant="h4" fontWeight={700}>
+                    {formatDuration(maxTime)}
+                  </Typography>
+                </Box>
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
 
-        <div className="card">
-          <div className="flex items-center">
-            <Activity className="h-8 w-8 text-red-600 mr-3" />
-            <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Mais Longa</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {queries.length > 0
-                  ? formatDuration(Math.max(...queries.map((q) => q.elapsedTime)))
-                  : '0s'}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="card">
-        {loading ? (
-          <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-          </div>
-        ) : queries.length === 0 ? (
-          <div className="text-center py-12">
-            <Activity className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-600 dark:text-gray-400">
-              Nenhuma query ativa no momento
-            </p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-              <thead className="bg-gray-50 dark:bg-gray-700">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
-                    Session ID
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
-                    Usuário
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
-                    Host
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
-                    Database
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
-                    Tempo
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
-                    SQL
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                {queries.map((query) => (
-                  <tr key={query.id}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                      {query.sessionId}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                      {query.user}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                      {query.host}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                      {query.database || '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <span
-                        className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                          query.status === 'running'
-                            ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
-                            : 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200'
-                        }`}
-                      >
-                        {query.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                      {formatDuration(query.elapsedTime)}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                      <code className="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded text-xs">
-                        {formatSQL(query.sqlText)}
-                      </code>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+      <Card>
+        <CardContent>
+          {loading ? (
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 256 }}>
+              <CircularProgress />
+            </Box>
+          ) : queries.length === 0 ? (
+            <Box sx={{ textAlign: 'center', py: 6 }}>
+              <ActivityIcon sx={{ fontSize: 48, color: 'text.secondary', mb: 2, opacity: 0.5 }} />
+              <Typography variant="body1" color="text.secondary">
+                Nenhuma query ativa no momento
+              </Typography>
+            </Box>
+          ) : (
+            <TableContainer>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase' }}>
+                      Session ID
+                    </TableCell>
+                    <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase' }}>
+                      Usuário
+                    </TableCell>
+                    <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase' }}>
+                      Host
+                    </TableCell>
+                    <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase' }}>
+                      Database
+                    </TableCell>
+                    <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase' }}>
+                      Status
+                    </TableCell>
+                    <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase' }}>
+                      Tempo
+                    </TableCell>
+                    <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase' }}>
+                      SQL
+                    </TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {queries.map((query) => (
+                    <TableRow key={query.id}>
+                      <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.875rem' }}>
+                        {query.sessionId}
+                      </TableCell>
+                      <TableCell>{query.user}</TableCell>
+                      <TableCell>{query.host}</TableCell>
+                      <TableCell>{query.database || '-'}</TableCell>
+                      <TableCell>
+                        <Chip
+                          label={query.status}
+                          size="small"
+                          color={query.status === 'running' ? 'success' : 'warning'}
+                          sx={{ fontSize: '0.6875rem', height: 20 }}
+                        />
+                      </TableCell>
+                      <TableCell>{formatDuration(query.elapsedTime)}</TableCell>
+                      <TableCell>
+                        <Box
+                          component="code"
+                          sx={{
+                            bgcolor: 'action.hover',
+                            px: 1,
+                            py: 0.5,
+                            borderRadius: 0.5,
+                            fontSize: '0.75rem',
+                            fontFamily: 'monospace',
+                            display: 'block',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            maxWidth: 300,
+                          }}
+                        >
+                          {formatSQL(query.sqlText)}
+                        </Box>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+        </CardContent>
+      </Card>
     </PageLayout>
   );
 }
-

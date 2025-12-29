@@ -32,45 +32,43 @@ export default function PageLayout({
         minHeight: fullscreen ? 'calc(100vh - 88px)' : 'auto',
       }}
     >
-      {/* Header */}
-      <Box
-        sx={{
+      {/* Top Bar com título e botões de ação */}
+      <Box 
+        sx={{ 
+          flexShrink: 0, 
+          px: 2, 
+          py: 0.5, 
+          borderBottom: 1, 
+          borderColor: 'divider',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          mb: 2,
-          pb: 2,
-          borderBottom: `1px solid ${theme.palette.divider}`,
+          minHeight: 'auto',
         }}
       >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
           {backUrl && (
             <IconButton
               onClick={() => navigate(backUrl)}
+              size="small"
               sx={{
-                color: theme.palette.text.secondary,
+                p: 0.5,
+                color: 'text.secondary',
                 '&:hover': {
-                  backgroundColor: alpha(theme.palette.primary.main, 0.08),
-                  color: theme.palette.primary.main,
+                  color: 'text.primary',
+                  bgcolor: 'action.hover',
                 },
               }}
             >
-              <ArrowBackIcon />
+              <ArrowBackIcon fontSize="small" />
             </IconButton>
           )}
-          <Typography
-            variant="h5"
-            component="h1"
-            sx={{
-              fontWeight: 600,
-              color: theme.palette.text.primary,
-            }}
-          >
+          <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.8125rem', lineHeight: 1.2 }}>
             {title}
           </Typography>
         </Box>
         {actions && (
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             {actions}
           </Box>
         )}
@@ -82,7 +80,7 @@ export default function PageLayout({
           flexGrow: 1,
           display: 'flex',
           flexDirection: 'column',
-          overflow: fullscreen ? 'hidden' : 'visible',
+          overflow: fullscreen ? 'auto' : 'visible',
         }}
       >
         {children}

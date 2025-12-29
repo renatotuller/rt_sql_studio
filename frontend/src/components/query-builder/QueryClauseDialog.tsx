@@ -3,7 +3,15 @@
  */
 
 import { ReactNode } from 'react';
-import { X } from 'lucide-react';
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  IconButton,
+  Box,
+  Typography,
+} from '@mui/material';
+import { Close as CloseIcon } from '@mui/icons-material';
 
 interface QueryClauseDialogProps {
   isOpen: boolean;
@@ -20,51 +28,64 @@ export default function QueryClauseDialog({
   children,
   width = 'lg',
 }: QueryClauseDialogProps) {
-  if (!isOpen) return null;
-
-  const widthClasses = {
-    sm: 'max-w-sm',
-    md: 'max-w-md',
-    lg: 'max-w-2xl',
-    xl: 'max-w-4xl',
-    full: 'max-w-[90vw]',
+  const maxWidthMap = {
+    sm: 'sm' as const,
+    md: 'md' as const,
+    lg: 'lg' as const,
+    xl: 'xl' as const,
+    full: false as const,
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/50"
-        onClick={onClose}
-      />
-      
-      {/* Dialog */}
-      <div
-        className={`
-          relative w-full ${widthClasses[width]} max-h-[85vh]
-          bg-white dark:bg-gray-900 rounded-xl shadow-2xl
-          flex flex-col overflow-hidden
-        `}
+    <Dialog
+      open={isOpen}
+      onClose={onClose}
+      maxWidth={maxWidthMap[width]}
+      fullWidth={width === 'full'}
+      PaperProps={{
+        sx: {
+          maxHeight: '85vh',
+          ...(width === 'full' && {
+            maxWidth: '90vw',
+          }),
+        },
+      }}
+    >
+      <DialogTitle
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          pb: 1.5,
+        }}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-            {title}
-          </h2>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg text-gray-500 hover:text-gray-700 dark:text-gray-400 
-                     dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-        
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto">
+        <Typography variant="h6" component="span">
+          {title}
+        </Typography>
+        <IconButton
+          onClick={onClose}
+          size="small"
+          sx={{
+            color: 'text.secondary',
+            '&:hover': {
+              bgcolor: 'action.hover',
+            },
+          }}
+        >
+          <CloseIcon />
+        </IconButton>
+      </DialogTitle>
+      <DialogContent
+        dividers
+        sx={{
+          overflow: 'auto',
+          p: 0,
+        }}
+      >
+        <Box sx={{ p: 2 }}>
           {children}
-        </div>
-      </div>
-    </div>
+        </Box>
+      </DialogContent>
+    </Dialog>
   );
 }

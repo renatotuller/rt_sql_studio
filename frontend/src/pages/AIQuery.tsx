@@ -1,10 +1,41 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Sparkles, Copy, Check, Play, AlertCircle, Loader2, Settings as SettingsIcon, Database } from 'lucide-react';
+import {
+  Box,
+  Card,
+  CardContent,
+  TextField,
+  Button,
+  Typography,
+  Alert,
+  IconButton,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  CircularProgress,
+  Chip,
+  useTheme,
+  alpha,
+} from '@mui/material';
+import {
+  ArrowBack as ArrowBackIcon,
+  AutoAwesome as SparklesIcon,
+  ContentCopy as CopyIcon,
+  Check as CheckIcon,
+  PlayArrow as PlayIcon,
+  ErrorOutline as AlertCircleIcon,
+  Settings as SettingsIcon,
+  Storage as DatabaseIcon,
+} from '@mui/icons-material';
 import { openaiApi, connectionsApi, type ExecuteSQLResponse } from '../api/client';
 import ViewSwitcher from '../components/ViewSwitcher';
 
 export default function AIQuery() {
+  const theme = useTheme();
   const { connId } = useParams<{ connId: string }>();
   const navigate = useNavigate();
   const [connectionName, setConnectionName] = useState('');
@@ -167,277 +198,310 @@ export default function AIQuery() {
     }
   };
 
+  const examplePrompts = [
+    'Mostre todos os produtos ordenados por nome',
+    'Liste os clientes que fizeram compras no último mês com o valor total',
+    'Quais produtos estão com estoque abaixo de 10 unidades?',
+  ];
+
   return (
-    <div style={{ width: '100%', maxWidth: '100%', overflowX: 'hidden' }}>
-      <div 
-        className="flex-shrink-0 flex flex-col bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700" 
-        style={{ 
-          paddingTop: '0.25rem',
-          paddingBottom: '0.25rem',
-          paddingLeft: '1rem',
-          paddingRight: '1rem',
+    <Box sx={{ width: '100%', maxWidth: '100%', overflowX: 'hidden', height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      {/* Top Bar com título e botões de ação */}
+      <Box 
+        sx={{ 
+          flexShrink: 0, 
+          px: 2, 
+          py: 0.5, 
+          borderBottom: 1, 
+          borderColor: 'divider',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          minHeight: 'auto',
         }}
       >
-        <div className="flex items-center justify-between mb-2">
-          <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-            Consulta IA: {connectionName}
-          </h1>
-          <button
-            onClick={() => navigate('/settings')}
-            className="btn btn-secondary flex items-center gap-2 h-10"
-            title="Configurar API OpenAI"
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          <IconButton
+            onClick={() => navigate(`/schema/${connId}`)}
+            size="small"
+            sx={{
+              p: 0.5,
+              color: 'text.secondary',
+              '&:hover': {
+                color: 'text.primary',
+                bgcolor: 'action.hover',
+              },
+            }}
           >
-            <SettingsIcon className="h-4 w-4" />
-            Configurações
-          </button>
-        </div>
-        <div className="flex items-center gap-2 flex-nowrap overflow-x-auto">
+            <ArrowBackIcon fontSize="small" />
+          </IconButton>
+          <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.8125rem', lineHeight: 1.2 }}>
+            Consulta IA: {connectionName}
+          </Typography>
+        </Box>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <ViewSwitcher currentView="ai-query" />
-        </div>
-      </div>
+          <Button
+            onClick={() => navigate('/settings')}
+            variant="outlined"
+            size="small"
+            startIcon={<SettingsIcon fontSize="small" />}
+            sx={{
+              px: 1.5,
+              py: 0.25,
+              minHeight: 'auto',
+              fontSize: '0.6875rem',
+              fontWeight: 500,
+              textTransform: 'none',
+              borderRadius: 1.5,
+              borderColor: theme.palette.divider,
+              color: theme.palette.text.primary,
+              '&:hover': {
+                borderColor: theme.palette.divider,
+                backgroundColor: alpha(theme.palette.action.hover, 0.04),
+              },
+            }}
+          >
+            Configurações
+          </Button>
+        </Box>
+      </Box>
 
-      <div className="p-6 max-w-6xl mx-auto">
+      <Box sx={{ flex: 1, overflow: 'auto', p: 3, maxWidth: 1200, mx: 'auto' }}>
         {/* Alerta se não estiver configurado */}
         {configStatus && !configStatus.configured && (
-          <div className="card mb-6 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800">
-            <div className="flex items-start gap-3">
-              <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
-              <div className="flex-1">
-                <h3 className="font-semibold text-yellow-900 dark:text-yellow-200 mb-1">
-                  Configuração Necessária
-                </h3>
-                <p className="text-sm text-yellow-800 dark:text-yellow-300 mb-3">
-                  Para usar o gerador de SQL com IA, você precisa configurar a API Key da OpenAI.
-                </p>
-                <button
-                  onClick={() => navigate('/settings')}
-                  className="btn btn-primary text-sm"
-                >
-                  Ir para Configurações
-                </button>
-              </div>
-            </div>
-          </div>
+          <Alert
+            severity="warning"
+            icon={<AlertCircleIcon />}
+            sx={{ mb: 3 }}
+            action={
+              <Button
+                onClick={() => navigate('/settings')}
+                size="small"
+                sx={{ fontSize: '0.8125rem' }}
+              >
+                Ir para Configurações
+              </Button>
+            }
+          >
+            <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 0.5 }}>
+              Configuração Necessária
+            </Typography>
+            <Typography variant="body2">
+              Para usar o gerador de SQL com IA, você precisa configurar a API Key da OpenAI.
+            </Typography>
+          </Alert>
         )}
 
         {/* Input de Prompt */}
-        <div className="card mb-6">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-            Descreva o que você quer buscar:
-          </label>
-          <textarea
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            placeholder="Ex: Mostre todos os produtos com preço maior que 100 e estoque menor que 50, ordenados por nome"
-            className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
-            rows={4}
-            disabled={loading || !configStatus?.configured}
-          />
-          <div className="mt-3 flex items-center justify-between">
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              Descreva em linguagem natural o que você quer buscar no banco de dados
-            </p>
-            <button
-              onClick={handleGenerate}
-              disabled={loading || !prompt.trim() || !configStatus?.configured}
-              className="btn btn-primary flex items-center gap-2"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Gerando...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="h-4 w-4" />
-                  Gerar SQL
-                </>
-              )}
-            </button>
-          </div>
-        </div>
+        <Card sx={{ mb: 3 }}>
+          <CardContent>
+            <Typography variant="body2" fontWeight={500} sx={{ mb: 1.5 }}>
+              Descreva o que você quer buscar:
+            </Typography>
+            <TextField
+              fullWidth
+              multiline
+              rows={4}
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              placeholder="Ex: Mostre todos os produtos com preço maior que 100 e estoque menor que 50, ordenados por nome"
+              disabled={loading || !configStatus?.configured}
+              sx={{ mb: 1.5 }}
+            />
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Typography variant="caption" color="text.secondary">
+                Descreva em linguagem natural o que você quer buscar no banco de dados
+              </Typography>
+              <Button
+                onClick={handleGenerate}
+                disabled={loading || !prompt.trim() || !configStatus?.configured}
+                variant="contained"
+                startIcon={loading ? <CircularProgress size={16} /> : <SparklesIcon />}
+                sx={{ fontSize: '0.8125rem' }}
+              >
+                {loading ? 'Gerando...' : 'Gerar SQL'}
+              </Button>
+            </Box>
+          </CardContent>
+        </Card>
 
         {/* Erro */}
         {error && (
-          <div className="card mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
-            <div className="flex items-start gap-3">
-              <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
-              <div>
-                <h3 className="font-semibold text-red-900 dark:text-red-200 mb-1">
-                  Erro
-                </h3>
-                <p className="text-sm text-red-800 dark:text-red-300">
-                  {error}
-                </p>
-              </div>
-            </div>
-          </div>
+          <Alert severity="error" icon={<AlertCircleIcon />} sx={{ mb: 3 }}>
+            <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 0.5 }}>
+              Erro
+            </Typography>
+            <Typography variant="body2">{error}</Typography>
+          </Alert>
         )}
 
         {/* SQL Gerado */}
         {generatedSQL && (
-          <div className="card">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                SQL Gerado:
-              </h2>
-              <div className="flex gap-2">
-                <button
-                  onClick={handleCopy}
-                  className="btn btn-secondary flex items-center gap-2 text-sm"
+          <Card sx={{ mb: 3 }}>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                <Typography variant="h6" fontWeight={600}>
+                  SQL Gerado:
+                </Typography>
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                  <Button
+                    onClick={handleCopy}
+                    variant="outlined"
+                    size="small"
+                    startIcon={copied ? <CheckIcon /> : <CopyIcon />}
+                    sx={{ fontSize: '0.8125rem' }}
+                  >
+                    {copied ? 'Copiado!' : 'Copiar'}
+                  </Button>
+                  <Button
+                    onClick={handleExecute}
+                    disabled={executing || !generatedSQL}
+                    variant="contained"
+                    size="small"
+                    startIcon={executing ? <CircularProgress size={16} /> : <PlayIcon />}
+                    sx={{ fontSize: '0.8125rem' }}
+                  >
+                    {executing ? 'Executando...' : 'Executar Query'}
+                  </Button>
+                </Box>
+              </Box>
+              <Paper
+                elevation={0}
+                sx={{
+                  bgcolor: 'grey.900',
+                  color: 'grey.100',
+                  p: 2,
+                  borderRadius: 1,
+                  overflowX: 'auto',
+                }}
+              >
+                <Box
+                  component="code"
+                  sx={{
+                    fontFamily: 'monospace',
+                    fontSize: '0.875rem',
+                    whiteSpace: 'pre',
+                  }}
                 >
-                  {copied ? (
-                    <>
-                      <Check className="h-4 w-4" />
-                      Copiado!
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="h-4 w-4" />
-                      Copiar
-                    </>
-                  )}
-                </button>
-                <button
-                  onClick={handleExecute}
-                  disabled={executing || !generatedSQL}
-                  className="btn btn-primary flex items-center gap-2 text-sm"
-                >
-                  {executing ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Executando...
-                    </>
-                  ) : (
-                    <>
-                      <Play className="h-4 w-4" />
-                      Executar Query
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-            <pre className="bg-gray-900 dark:bg-gray-950 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm font-mono">
-              <code>{generatedSQL}</code>
-            </pre>
-          </div>
+                  {generatedSQL}
+                </Box>
+              </Paper>
+            </CardContent>
+          </Card>
         )}
 
         {/* Erro na Execução */}
         {executionError && (
-          <div className="card mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
-            <div className="flex items-start gap-3">
-              <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
-              <div>
-                <h3 className="font-semibold text-red-900 dark:text-red-200 mb-1">
-                  Erro ao Executar Query
-                </h3>
-                <p className="text-sm text-red-800 dark:text-red-300">
-                  {executionError}
-                </p>
-              </div>
-            </div>
-          </div>
+          <Alert severity="error" icon={<AlertCircleIcon />} sx={{ mb: 3 }}>
+            <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 0.5 }}>
+              Erro ao Executar Query
+            </Typography>
+            <Typography variant="body2">{executionError}</Typography>
+          </Alert>
         )}
 
         {/* Resultados da Query */}
         {queryResults && (
-          <div className="card">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                <Database className="h-5 w-5" />
-                Resultados da Query
-              </h2>
-              <div className="text-sm text-gray-600 dark:text-gray-400">
-                {queryResults.hasMore ? (
-                  <span className="text-yellow-600 dark:text-yellow-400">
-                    Mostrando {queryResults.displayedRows} de {queryResults.totalRows} resultados
-                  </span>
-                ) : (
-                  <span>
-                    {queryResults.totalRows} {queryResults.totalRows === 1 ? 'resultado' : 'resultados'}
-                  </span>
-                )}
-              </div>
-            </div>
-            
-            {queryResults.rows.length === 0 ? (
-              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                <p>Nenhum resultado encontrado</p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                  <thead className="bg-gray-50 dark:bg-gray-700">
-                    <tr>
-                      {queryResults.columns.map((column, idx) => (
-                        <th
-                          key={idx}
-                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
-                        >
-                          {column}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                    {queryResults.rows.map((row, rowIdx) => (
-                      <tr key={rowIdx} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                        {queryResults.columns.map((column, colIdx) => (
-                          <td
-                            key={colIdx}
-                            className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100"
+          <Card>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <DatabaseIcon />
+                  <Typography variant="h6" fontWeight={600}>
+                    Resultados da Query
+                  </Typography>
+                </Box>
+                <Typography variant="body2" color="text.secondary">
+                  {queryResults.hasMore ? (
+                    <Chip
+                      label={`Mostrando ${queryResults.displayedRows} de ${queryResults.totalRows} resultados`}
+                      size="small"
+                      color="warning"
+                      sx={{ fontSize: '0.75rem' }}
+                    />
+                  ) : (
+                    `${queryResults.totalRows} ${queryResults.totalRows === 1 ? 'resultado' : 'resultados'}`
+                  )}
+                </Typography>
+              </Box>
+              
+              {queryResults.rows.length === 0 ? (
+                <Box sx={{ textAlign: 'center', py: 4, color: 'text.secondary' }}>
+                  <Typography variant="body1">Nenhum resultado encontrado</Typography>
+                </Box>
+              ) : (
+                <TableContainer>
+                  <Table>
+                    <TableHead>
+                      <TableRow>
+                        {queryResults.columns.map((column, idx) => (
+                          <TableCell
+                            key={idx}
+                            sx={{
+                              fontWeight: 600,
+                              fontSize: '0.75rem',
+                              textTransform: 'uppercase',
+                            }}
                           >
-                            {row[column] !== null && row[column] !== undefined
-                              ? String(row[column])
-                              : <span className="text-gray-400 italic">NULL</span>}
-                          </td>
+                            {column}
+                          </TableCell>
                         ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {queryResults.rows.map((row, rowIdx) => (
+                        <TableRow key={rowIdx} hover>
+                          {queryResults.columns.map((column, colIdx) => (
+                            <TableCell key={colIdx}>
+                              {row[column] !== null && row[column] !== undefined
+                                ? String(row[column])
+                                : <Typography component="span" sx={{ color: 'text.secondary', fontStyle: 'italic' }}>NULL</Typography>}
+                            </TableCell>
+                          ))}
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              )}
+            </CardContent>
+          </Card>
         )}
 
         {/* Exemplos */}
         {!generatedSQL && !loading && (
-          <div className="card">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-              Exemplos de Prompts:
-            </h3>
-            <div className="space-y-3">
-              <div 
-                className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                onClick={() => setPrompt('Mostre todos os produtos ordenados por nome')}
-              >
-                <p className="text-sm text-gray-700 dark:text-gray-300">
-                  "Mostre todos os produtos ordenados por nome"
-                </p>
-              </div>
-              <div 
-                className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                onClick={() => setPrompt('Liste os clientes que fizeram compras no último mês com o valor total')}
-              >
-                <p className="text-sm text-gray-700 dark:text-gray-300">
-                  "Liste os clientes que fizeram compras no último mês com o valor total"
-                </p>
-              </div>
-              <div 
-                className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                onClick={() => setPrompt('Quais produtos estão com estoque abaixo de 10 unidades?')}
-              >
-                <p className="text-sm text-gray-700 dark:text-gray-300">
-                  "Quais produtos estão com estoque abaixo de 10 unidades?"
-                </p>
-              </div>
-            </div>
-          </div>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>
+                Exemplos de Prompts:
+              </Typography>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                {examplePrompts.map((example, idx) => (
+                  <Paper
+                    key={idx}
+                    elevation={0}
+                    onClick={() => setPrompt(example)}
+                    sx={{
+                      p: 1.5,
+                      bgcolor: 'action.hover',
+                      borderRadius: 1,
+                      cursor: 'pointer',
+                      '&:hover': {
+                        bgcolor: 'action.selected',
+                      },
+                    }}
+                  >
+                    <Typography variant="body2" sx={{ fontStyle: 'italic' }}>
+                      "{example}"
+                    </Typography>
+                  </Paper>
+                ))}
+              </Box>
+            </CardContent>
+          </Card>
         )}
-      </div>
-    </div>
+      </Box>
+    </Box>
   );
 }
-

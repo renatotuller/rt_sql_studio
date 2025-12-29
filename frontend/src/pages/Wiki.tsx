@@ -3,7 +3,28 @@
  */
 
 import { useState } from 'react';
-import { Book, ChevronRight, ChevronDown, Search, ExternalLink } from 'lucide-react';
+import {
+  Box,
+  Paper,
+  TextField,
+  InputAdornment,
+  Button,
+  Typography,
+  List,
+  ListItemButton,
+  ListItemIcon,
+  ListItemText,
+  Collapse,
+  useTheme,
+  alpha,
+} from '@mui/material';
+import {
+  Book as BookIcon,
+  ChevronRight,
+  ChevronLeft,
+  Search as SearchIcon,
+  OpenInNew as ExternalLinkIcon,
+} from '@mui/icons-material';
 import PageLayout from '../components/PageLayout';
 
 interface WikiSection {
@@ -264,6 +285,7 @@ Ative para atualização automática a cada 2 segundos.
 ];
 
 export default function Wiki() {
+  const theme = useTheme();
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedSections, setExpandedSections] = useState<Set<string>>(
     new Set(['getting-started', 'query-builder'])
@@ -296,148 +318,226 @@ export default function Wiki() {
 
   const activeContent = findSection(activeSection);
 
+  const renderContent = (content: string) => {
+    return content.split('```').map((part, idx) => {
+      if (idx % 2 === 1) {
+        // Code block
+        const lines = part.split('\n');
+        const language = lines[0];
+        const code = lines.slice(1).join('\n');
+        return (
+          <Box
+            key={idx}
+            component="pre"
+            sx={{
+              bgcolor: 'grey.900',
+              color: 'grey.100',
+              p: 2,
+              borderRadius: 1,
+              overflowX: 'auto',
+              my: 2,
+              fontFamily: 'monospace',
+              fontSize: '0.875rem',
+            }}
+          >
+            <Box component="code">{code}</Box>
+          </Box>
+        );
+      }
+      // Regular text - render as markdown-like
+      return (
+        <Box key={idx}>
+          {part.split('\n').map((line, lineIdx) => {
+            if (line.startsWith('### ')) {
+              return (
+                <Typography key={lineIdx} variant="h6" sx={{ mt: 3, mb: 1, fontWeight: 600 }}>
+                  {line.slice(4)}
+                </Typography>
+              );
+            }
+            if (line.startsWith('## ')) {
+              return (
+                <Typography key={lineIdx} variant="h5" sx={{ mt: 4, mb: 1.5, fontWeight: 700 }}>
+                  {line.slice(3)}
+                </Typography>
+              );
+            }
+            if (line.startsWith('- ')) {
+              return (
+                <Typography key={lineIdx} component="li" sx={{ ml: 3, mb: 0.5 }}>
+                  {line.slice(2)}
+                </Typography>
+              );
+            }
+            if (line.match(/^\d+\. /)) {
+              return (
+                <Typography key={lineIdx} component="li" sx={{ ml: 3, mb: 0.5, listStyleType: 'decimal' }}>
+                  {line.replace(/^\d+\. /, '')}
+                </Typography>
+              );
+            }
+            if (line.startsWith('**') && line.endsWith('**')) {
+              return (
+                <Typography key={lineIdx} component="p" sx={{ fontWeight: 600, mb: 1 }}>
+                  {line.slice(2, -2)}
+                </Typography>
+              );
+            }
+            if (line.trim() === '') {
+              return <Box key={lineIdx} component="br" />;
+            }
+            return (
+              <Typography key={lineIdx} component="p" sx={{ mb: 1 }}>
+                {line}
+              </Typography>
+            );
+          })}
+        </Box>
+      );
+    });
+  };
+
   return (
     <PageLayout title="Wiki - Documentação">
-      <div className="flex gap-6 h-[calc(100vh-180px)]">
+      <Box sx={{ display: 'flex', gap: 3, height: 'calc(100vh - 180px)' }}>
         {/* Sidebar - Índice */}
-        <div className="w-72 flex-shrink-0 overflow-y-auto">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4">
+        <Box sx={{ width: 288, flexShrink: 0, overflowY: 'auto' }}>
+          <Paper elevation={1} sx={{ p: 2 }}>
             {/* Search */}
-            <div className="relative mb-4">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Buscar na wiki..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg
-                         bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
-                         focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
+            <TextField
+              fullWidth
+              size="small"
+              placeholder="Buscar na wiki..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                  </InputAdornment>
+                ),
+              }}
+              sx={{ mb: 2 }}
+            />
 
             {/* Navigation */}
-            <nav className="space-y-1">
-              {wikiContent.map(section => (
-                <div key={section.id}>
-                  <button
-                    onClick={() => {
-                      toggleSection(section.id);
-                      setActiveSection(section.id);
-                    }}
-                    className={`
-                      w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg
-                      transition-colors text-left
-                      ${activeSection === section.id
-                        ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
-                        : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
-                      }
-                    `}
-                  >
-                    {section.subsections ? (
-                      expandedSections.has(section.id) ? (
-                        <ChevronDown className="h-4 w-4" />
-                      ) : (
-                        <ChevronRight className="h-4 w-4" />
-                      )
-                    ) : (
-                      <span className="w-4" />
-                    )}
-                    <span className="font-medium">{section.title}</span>
-                  </button>
+            <List dense disablePadding>
+              {wikiContent.map(section => {
+                const isExpanded = expandedSections.has(section.id);
+                const isActive = activeSection === section.id;
 
-                  {/* Subsections */}
-                  {section.subsections && expandedSections.has(section.id) && (
-                    <div className="ml-6 mt-1 space-y-1">
-                      {section.subsections.map(sub => (
-                        <button
-                          key={sub.id}
-                          onClick={() => setActiveSection(sub.id)}
-                          className={`
-                            w-full px-3 py-1.5 text-sm rounded-lg text-left
-                            transition-colors
-                            ${activeSection === sub.id
-                              ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
-                              : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400'
-                            }
-                          `}
-                        >
-                          {sub.title}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </nav>
-          </div>
-        </div>
+                return (
+                  <Box key={section.id}>
+                    <ListItemButton
+                      onClick={() => {
+                        toggleSection(section.id);
+                        setActiveSection(section.id);
+                      }}
+                      selected={isActive}
+                      sx={{
+                        borderRadius: 1,
+                        mb: 0.5,
+                        bgcolor: isActive ? alpha(theme.palette.primary.main, 0.08) : 'transparent',
+                        color: isActive ? 'primary.main' : 'text.primary',
+                        '&:hover': {
+                          bgcolor: isActive
+                            ? alpha(theme.palette.primary.main, 0.12)
+                            : 'action.hover',
+                        },
+                      }}
+                    >
+                      <ListItemIcon sx={{ minWidth: 24 }}>
+                        {section.subsections ? (
+                          isExpanded ? (
+                            <ChevronLeft sx={{ fontSize: 16 }} />
+                          ) : (
+                            <ChevronRight sx={{ fontSize: 16 }} />
+                          )
+                        ) : (
+                          <Box sx={{ width: 16 }} />
+                        )}
+                      </ListItemIcon>
+                      <ListItemText
+                        primary={section.title}
+                        primaryTypographyProps={{
+                          variant: 'body2',
+                          fontWeight: 500,
+                        }}
+                      />
+                    </ListItemButton>
+
+                    {/* Subsections */}
+                    {section.subsections && (
+                      <Collapse in={isExpanded} timeout="auto" unmountOnExit>
+                        <List component="div" disablePadding dense sx={{ pl: 3 }}>
+                          {section.subsections.map(sub => {
+                            const isSubActive = activeSection === sub.id;
+                            return (
+                              <ListItemButton
+                                key={sub.id}
+                                onClick={() => setActiveSection(sub.id)}
+                                selected={isSubActive}
+                                sx={{
+                                  borderRadius: 1,
+                                  mb: 0.25,
+                                  bgcolor: isSubActive
+                                    ? alpha(theme.palette.primary.main, 0.08)
+                                    : 'transparent',
+                                  color: isSubActive ? 'primary.main' : 'text.secondary',
+                                  '&:hover': {
+                                    bgcolor: isSubActive
+                                      ? alpha(theme.palette.primary.main, 0.12)
+                                      : 'action.hover',
+                                  },
+                                }}
+                              >
+                                <ListItemText
+                                  primary={sub.title}
+                                  primaryTypographyProps={{
+                                    variant: 'body2',
+                                    fontSize: '0.8125rem',
+                                  }}
+                                />
+                              </ListItemButton>
+                            );
+                          })}
+                        </List>
+                      </Collapse>
+                    )}
+                  </Box>
+                );
+              })}
+            </List>
+          </Paper>
+        </Box>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
+        <Box sx={{ flex: 1, overflowY: 'auto' }}>
+          <Paper elevation={1} sx={{ p: 3 }}>
             {activeContent ? (
-              <div className="prose dark:prose-invert max-w-none">
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+              <Box>
+                <Typography variant="h4" sx={{ mb: 2, fontWeight: 700 }}>
                   {activeContent.title}
-                </h1>
-                <div 
-                  className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap"
-                  style={{ fontFamily: 'inherit' }}
+                </Typography>
+                <Box
+                  sx={{
+                    color: 'text.primary',
+                    whiteSpace: 'pre-wrap',
+                    fontFamily: 'inherit',
+                  }}
                 >
-                  {activeContent.content.split('```').map((part, idx) => {
-                    if (idx % 2 === 1) {
-                      // Code block
-                      const lines = part.split('\n');
-                      const language = lines[0];
-                      const code = lines.slice(1).join('\n');
-                      return (
-                        <pre 
-                          key={idx} 
-                          className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto my-4"
-                        >
-                          <code>{code}</code>
-                        </pre>
-                      );
-                    }
-                    // Regular text - render as markdown-like
-                    return (
-                      <div key={idx}>
-                        {part.split('\n').map((line, lineIdx) => {
-                          if (line.startsWith('### ')) {
-                            return <h3 key={lineIdx} className="text-lg font-semibold mt-6 mb-2">{line.slice(4)}</h3>;
-                          }
-                          if (line.startsWith('## ')) {
-                            return <h2 key={lineIdx} className="text-xl font-bold mt-8 mb-3">{line.slice(3)}</h2>;
-                          }
-                          if (line.startsWith('- ')) {
-                            return <li key={lineIdx} className="ml-4">{line.slice(2)}</li>;
-                          }
-                          if (line.match(/^\d+\. /)) {
-                            return <li key={lineIdx} className="ml-4 list-decimal">{line.replace(/^\d+\. /, '')}</li>;
-                          }
-                          if (line.startsWith('**') && line.endsWith('**')) {
-                            return <p key={lineIdx} className="font-semibold">{line.slice(2, -2)}</p>;
-                          }
-                          if (line.trim() === '') {
-                            return <br key={lineIdx} />;
-                          }
-                          return <p key={lineIdx}>{line}</p>;
-                        })}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
+                  {renderContent(activeContent.content)}
+                </Box>
+              </Box>
             ) : (
-              <div className="text-center py-12 text-gray-500">
-                <Book className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>Selecione uma seção para ver o conteúdo</p>
-              </div>
+              <Box sx={{ textAlign: 'center', py: 6, color: 'text.secondary' }}>
+                <BookIcon sx={{ fontSize: 48, mb: 2, opacity: 0.5 }} />
+                <Typography variant="body1">Selecione uma seção para ver o conteúdo</Typography>
+              </Box>
             )}
-          </div>
-        </div>
-      </div>
+          </Paper>
+        </Box>
+      </Box>
     </PageLayout>
   );
 }

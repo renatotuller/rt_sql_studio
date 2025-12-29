@@ -132,7 +132,7 @@ export default function ViewSwitcher({ currentView }: ViewSwitcherProps) {
         })}
       </Box>
       
-      {/* Botão de atualização e indicador de cache */}
+      {/* Indicador de cache */}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
         {cacheMetadata && (
           <Typography
@@ -145,40 +145,6 @@ export default function ViewSwitcher({ currentView }: ViewSwitcherProps) {
             Atualizado {formatLastUpdated(cacheMetadata.lastUpdated)}
           </Typography>
         )}
-        <Button
-          onClick={handleRefresh}
-          disabled={refreshing}
-          variant="contained"
-          size="small"
-          startIcon={
-            refreshing ? (
-              <CircularProgress size={14} color="inherit" />
-            ) : (
-              <RefreshIcon sx={{ fontSize: '1.125rem' }} />
-            )
-          }
-          sx={{
-            px: 2.5,
-            py: 0.5,
-            minHeight: 'auto',
-            fontSize: '0.75rem',
-            fontWeight: 500,
-            textTransform: 'none',
-            borderRadius: 2,
-            backgroundColor: theme.palette.success.main,
-            color: theme.palette.success.contrastText,
-            '&:hover': {
-              backgroundColor: theme.palette.success.dark,
-            },
-            '&.Mui-disabled': {
-              backgroundColor: theme.palette.action.disabledBackground,
-              color: theme.palette.action.disabled,
-            },
-          }}
-          title="Atualizar estrutura e relacionamentos do banco"
-        >
-          {refreshing ? 'Atualizando...' : 'Atualizar'}
-        </Button>
       </Box>
     </Box>
   );

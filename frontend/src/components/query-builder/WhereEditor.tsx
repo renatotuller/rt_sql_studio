@@ -3,7 +3,28 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, Edit2, Check, X as XIcon, Database } from 'lucide-react';
+import {
+  Box,
+  Typography,
+  IconButton,
+  Button,
+  Select,
+  MenuItem,
+  FormControl,
+  TextField,
+  Paper,
+  Tooltip,
+  useTheme,
+  alpha,
+} from '@mui/material';
+import {
+  Add as AddIcon,
+  Delete as DeleteIcon,
+  Edit as EditIcon,
+  Check as CheckIcon,
+  Close as CloseIcon,
+  Storage as StorageIcon,
+} from '@mui/icons-material';
 import type { WhereCondition, WhereOperator, WhereLogicalOperator, QueryAST } from '../../types/query-builder';
 import type { GraphNode, GraphEdge } from '../../api/client';
 import SubqueryBuilder from './SubqueryBuilder';
@@ -36,6 +57,7 @@ export default function WhereEditor({
   availableTables,
   tableAliases,
 }: WhereEditorProps) {
+  const theme = useTheme();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
   const [editingSubqueryId, setEditingSubqueryId] = useState<string | null>(null);
@@ -135,27 +157,64 @@ export default function WhereEditor({
   const sortedConditions = [...conditions].sort((a, b) => a.order - b.order);
 
   return (
-    <div className="h-full flex flex-col bg-white dark:bg-gray-900">
-      <div className="p-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+    <Box
+      sx={{
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        bgcolor: 'background.paper',
+      }}
+    >
+      <Box
+        sx={{
+          p: 1.5,
+          borderBottom: 1,
+          borderColor: 'divider',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}
+      >
+        <Typography variant="subtitle2" fontWeight={600}>
           WHERE ({conditions.length})
-        </h3>
-        <button
-          onClick={() => setIsAdding(true)}
-          className="p-1.5 text-blue-600 hover:text-blue-700 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
-          title="Adicionar condição"
-        >
-          <Plus className="h-4 w-4" />
-        </button>
-      </div>
-      <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar">
+        </Typography>
+        <Tooltip title="Adicionar condição">
+          <IconButton
+            onClick={() => setIsAdding(true)}
+            size="small"
+            sx={{
+              color: 'primary.main',
+              '&:hover': {
+                bgcolor: alpha(theme.palette.primary.main, 0.08),
+              },
+            }}
+          >
+            <AddIcon sx={{ fontSize: 16 }} />
+          </IconButton>
+        </Tooltip>
+      </Box>
+      <Box
+        sx={{
+          flex: 1,
+          overflow: 'auto',
+          p: 1.5,
+        }}
+      >
         {sortedConditions.length === 0 && !isAdding ? (
-          <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-            <p className="text-sm">Nenhuma condição WHERE</p>
-            <p className="text-xs mt-1">Clique no botão + para adicionar</p>
-          </div>
+          <Box
+            sx={{
+              textAlign: 'center',
+              py: 4,
+              color: 'text.secondary',
+            }}
+          >
+            <Typography variant="body2">Nenhuma condição WHERE</Typography>
+            <Typography variant="caption" sx={{ mt: 0.5, display: 'block' }}>
+              Clique no botão + para adicionar
+            </Typography>
+          </Box>
         ) : (
-          <>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
             {sortedConditions.map((condition, index) => {
               const isEditing = editingId === condition.id;
               const tableName = condition.tableId.includes('.') 
@@ -165,233 +224,362 @@ export default function WhereEditor({
               const columns = getColumnsForTable(condition.tableId);
 
               return (
-                <div
+                <Paper
                   key={condition.id}
-                  className="bg-gray-50 dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-2"
+                  elevation={0}
+                  sx={{
+                    p: 1.5,
+                    border: 1,
+                    borderColor: 'divider',
+                    borderRadius: 1,
+                    bgcolor: 'action.hover',
+                  }}
                 >
                   {isEditing ? (
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
                         {index > 0 && (
-                          <select
-                            value={condition.logicalOperator || 'AND'}
-                            onChange={e => handleUpdate(condition.id, { logicalOperator: e.target.value as WhereLogicalOperator })}
-                            className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                          >
-                            {LOGICAL_OPERATORS.map(op => (
-                              <option key={op} value={op}>{op}</option>
-                            ))}
-                          </select>
+                          <FormControl size="small" sx={{ minWidth: 80 }}>
+                            <Select
+                              value={condition.logicalOperator || 'AND'}
+                              onChange={e => handleUpdate(condition.id, { logicalOperator: e.target.value as WhereLogicalOperator })}
+                              sx={{ fontSize: '0.75rem', height: 32 }}
+                            >
+                              {LOGICAL_OPERATORS.map(op => (
+                                <MenuItem key={op} value={op} sx={{ fontSize: '0.75rem' }}>
+                                  {op}
+                                </MenuItem>
+                              ))}
+                            </Select>
+                          </FormControl>
                         )}
-                        <select
-                          value={condition.tableId}
-                          onChange={e => {
-                            const newTableId = e.target.value;
-                            handleUpdate(condition.id, { 
-                              tableId: newTableId,
-                              column: '', // Resetar coluna ao mudar tabela
-                            });
-                          }}
-                          className="flex-1 px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                        >
-                          <option value="">Selecione tabela</option>
-                          {Array.from(availableTables).map(tableId => {
-                            const tableName = tableId.includes('.') 
-                              ? tableId.split('.').pop() || tableId
-                              : tableId;
-                            return (
-                              <option key={tableId} value={tableId}>
-                                {tableName} AS {getTableAlias(tableId)}
-                              </option>
-                            );
-                          })}
-                        </select>
-                        <select
-                          value={condition.column}
-                          onChange={e => handleUpdate(condition.id, { column: e.target.value })}
-                          className="flex-1 px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                          disabled={!condition.tableId}
-                        >
-                          <option value="">Selecione coluna</option>
-                          {columns.map(col => (
-                            <option key={col} value={col}>{col}</option>
-                          ))}
-                        </select>
-                        <select
-                          value={condition.operator}
-                          onChange={e => handleUpdate(condition.id, { operator: e.target.value as WhereOperator })}
-                          className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                        >
-                          {WHERE_OPERATORS.map(op => (
-                            <option key={op} value={op}>{op}</option>
-                          ))}
-                        </select>
-                      </div>
+                        <FormControl size="small" sx={{ flex: 1, minWidth: 120 }}>
+                          <Select
+                            value={condition.tableId}
+                            onChange={e => {
+                              const newTableId = e.target.value;
+                              handleUpdate(condition.id, { 
+                                tableId: newTableId,
+                                column: '', // Resetar coluna ao mudar tabela
+                              });
+                            }}
+                            sx={{ fontSize: '0.75rem', height: 32 }}
+                          >
+                            <MenuItem value="" sx={{ fontSize: '0.75rem' }}>Selecione tabela</MenuItem>
+                            {Array.from(availableTables).map(tableId => {
+                              const tableName = tableId.includes('.') 
+                                ? tableId.split('.').pop() || tableId
+                                : tableId;
+                              return (
+                                <MenuItem key={tableId} value={tableId} sx={{ fontSize: '0.75rem' }}>
+                                  {tableName} AS {getTableAlias(tableId)}
+                                </MenuItem>
+                              );
+                            })}
+                          </Select>
+                        </FormControl>
+                        <FormControl size="small" sx={{ flex: 1, minWidth: 120 }} disabled={!condition.tableId}>
+                          <Select
+                            value={condition.column}
+                            onChange={e => handleUpdate(condition.id, { column: e.target.value })}
+                            sx={{ fontSize: '0.75rem', height: 32 }}
+                          >
+                            <MenuItem value="" sx={{ fontSize: '0.75rem' }}>Selecione coluna</MenuItem>
+                            {columns.map(col => (
+                              <MenuItem key={col} value={col} sx={{ fontSize: '0.75rem' }}>
+                                {col}
+                              </MenuItem>
+                            ))}
+                          </Select>
+                        </FormControl>
+                        <FormControl size="small" sx={{ minWidth: 120 }}>
+                          <Select
+                            value={condition.operator}
+                            onChange={e => handleUpdate(condition.id, { operator: e.target.value as WhereOperator })}
+                            sx={{ fontSize: '0.75rem', height: 32 }}
+                          >
+                            {WHERE_OPERATORS.map(op => (
+                              <MenuItem key={op} value={op} sx={{ fontSize: '0.75rem' }}>
+                                {op}
+                              </MenuItem>
+                            ))}
+                          </Select>
+                        </FormControl>
+                      </Box>
                       {needsValue(condition.operator) && !needsSubquery(condition.operator) && (
-                        <input
-                          type="text"
+                        <TextField
+                          size="small"
+                          fullWidth
                           value={formatValue(condition.value, condition.operator)}
                           onChange={e => {
                             const parsed = parseValue(e.target.value, condition.operator);
                             handleUpdate(condition.id, { value: parsed });
                           }}
                           placeholder={needsMultipleValues(condition.operator) ? 'valor1, valor2, ...' : 'valor'}
-                          className="w-full px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono"
+                          sx={{
+                            '& .MuiInputBase-root': {
+                              fontSize: '0.75rem',
+                              fontFamily: 'monospace',
+                              height: 32,
+                            },
+                          }}
                         />
                       )}
                       {needsSubquery(condition.operator) && (
-                        <div className="flex items-center gap-2">
-                          {condition.subquery ? (
-                            <div className="flex-1 px-2 py-1 text-xs border border-green-300 dark:border-green-700 rounded bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 font-mono">
-                              Subselect configurado
-                            </div>
-                          ) : (
-                            <div className="flex-1 px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400">
-                              Nenhum subselect configurado
-                            </div>
-                          )}
-                          <button
-                            onClick={() => setEditingSubqueryId(condition.id)}
-                            className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center gap-1"
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Paper
+                            elevation={0}
+                            sx={{
+                              flex: 1,
+                              px: 1,
+                              py: 0.5,
+                              border: 1,
+                              borderColor: condition.subquery ? 'success.main' : 'divider',
+                              bgcolor: condition.subquery ? alpha(theme.palette.success.main, 0.08) : 'action.hover',
+                              borderRadius: 0.5,
+                            }}
                           >
-                            <Database className="h-3 w-3" />
+                            <Typography
+                              variant="caption"
+                              sx={{
+                                fontFamily: 'monospace',
+                                fontSize: '0.75rem',
+                                color: condition.subquery ? 'success.main' : 'text.secondary',
+                              }}
+                            >
+                              {condition.subquery ? 'Subselect configurado' : 'Nenhum subselect configurado'}
+                            </Typography>
+                          </Paper>
+                          <Button
+                            onClick={() => setEditingSubqueryId(condition.id)}
+                            size="small"
+                            variant="contained"
+                            startIcon={<StorageIcon sx={{ fontSize: 14 }} />}
+                            sx={{
+                              fontSize: '0.75rem',
+                              px: 1,
+                              py: 0.5,
+                              minHeight: 'auto',
+                            }}
+                          >
                             {condition.subquery ? 'Editar' : 'Criar'} Subselect
-                          </button>
-                        </div>
+                          </Button>
+                        </Box>
                       )}
-                      <div className="flex items-center gap-2 justify-end">
-                        <button
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, justifyContent: 'flex-end' }}>
+                        <Button
                           onClick={() => setEditingId(null)}
-                          className="px-2 py-1 text-xs text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                          size="small"
+                          sx={{ fontSize: '0.75rem', minHeight: 'auto' }}
                         >
                           Cancelar
-                        </button>
-                        <button
+                        </Button>
+                        <Button
                           onClick={() => setEditingId(null)}
-                          className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
+                          size="small"
+                          variant="contained"
+                          sx={{ fontSize: '0.75rem', minHeight: 'auto' }}
                         >
                           Salvar
-                        </button>
-                      </div>
-                    </div>
+                        </Button>
+                      </Box>
+                    </Box>
                   ) : (
-                    <div className="flex items-center gap-2">
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                       {index > 0 && (
-                        <span className="text-xs font-semibold text-gray-600 dark:text-gray-400 px-1">
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            fontWeight: 600,
+                            color: 'text.secondary',
+                            px: 0.5,
+                          }}
+                        >
                           {condition.logicalOperator || 'AND'}
-                        </span>
+                        </Typography>
                       )}
-                      <span className="font-mono text-xs text-gray-900 dark:text-white flex-1">
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          fontFamily: 'monospace',
+                          fontSize: '0.75rem',
+                          flex: 1,
+                        }}
+                      >
                         {condition.operator === 'EXISTS' || condition.operator === 'NOT EXISTS' 
                           ? `${condition.operator} (subselect)`
                           : `${alias}.${condition.column} ${condition.operator} ${condition.subquery ? '(subselect)' : needsValue(condition.operator) ? formatValue(condition.value, condition.operator) : ''}`
                         }
-                      </span>
-                      <button
-                        onClick={() => setEditingId(condition.id)}
-                        className="p-1 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"
-                        title="Editar"
-                      >
-                        <Edit2 className="h-3 w-3" />
-                      </button>
-                      <button
-                        onClick={() => onRemove(condition.id)}
-                        className="p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400"
-                        title="Remover"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </button>
-                    </div>
+                      </Typography>
+                      <Tooltip title="Editar">
+                        <IconButton
+                          onClick={() => setEditingId(condition.id)}
+                          size="small"
+                          sx={{
+                            color: 'text.secondary',
+                            '&:hover': {
+                              color: 'primary.main',
+                            },
+                          }}
+                        >
+                          <EditIcon sx={{ fontSize: 14 }} />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Remover">
+                        <IconButton
+                          onClick={() => onRemove(condition.id)}
+                          size="small"
+                          sx={{
+                            color: 'text.secondary',
+                            '&:hover': {
+                              color: 'error.main',
+                            },
+                          }}
+                        >
+                          <DeleteIcon sx={{ fontSize: 14 }} />
+                        </IconButton>
+                      </Tooltip>
+                    </Box>
                   )}
-                </div>
+                </Paper>
               );
             })}
 
             {isAdding && (
-              <div className="bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-800 p-2">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <select
-                      value={newCondition.logicalOperator || 'AND'}
-                      onChange={e => setNewCondition({ ...newCondition, logicalOperator: e.target.value as WhereLogicalOperator })}
-                      className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                    >
-                      {LOGICAL_OPERATORS.map(op => (
-                        <option key={op} value={op}>{op}</option>
-                      ))}
-                    </select>
-                    <select
-                      value={newCondition.tableId || ''}
-                      onChange={e => setNewCondition({ ...newCondition, tableId: e.target.value, column: '' })}
-                      className="flex-1 px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                    >
-                      <option value="">Selecione tabela</option>
-                      {Array.from(availableTables).map(tableId => {
-                        const tableName = tableId.includes('.') 
-                          ? tableId.split('.').pop() || tableId
-                          : tableId;
-                        return (
-                          <option key={tableId} value={tableId}>
-                            {tableName} AS {getTableAlias(tableId)}
-                          </option>
-                        );
-                      })}
-                    </select>
-                    <select
-                      value={newCondition.column || ''}
-                      onChange={e => setNewCondition({ ...newCondition, column: e.target.value })}
-                      className="flex-1 px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                      disabled={!newCondition.tableId}
-                    >
-                      <option value="">Selecione coluna</option>
-                      {newCondition.tableId && getColumnsForTable(newCondition.tableId).map(col => (
-                        <option key={col} value={col}>{col}</option>
-                      ))}
-                    </select>
-                    <select
-                      value={newCondition.operator || '='}
-                      onChange={e => setNewCondition({ ...newCondition, operator: e.target.value as WhereOperator })}
-                      className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                    >
-                      {WHERE_OPERATORS.map(op => (
-                        <option key={op} value={op}>{op}</option>
-                      ))}
-                    </select>
-                  </div>
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 1.5,
+                  border: 1,
+                  borderColor: 'primary.main',
+                  borderRadius: 1,
+                  bgcolor: alpha(theme.palette.primary.main, 0.04),
+                }}
+              >
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                    <FormControl size="small" sx={{ minWidth: 80 }}>
+                      <Select
+                        value={newCondition.logicalOperator || 'AND'}
+                        onChange={e => setNewCondition({ ...newCondition, logicalOperator: e.target.value as WhereLogicalOperator })}
+                        sx={{ fontSize: '0.75rem', height: 32 }}
+                      >
+                        {LOGICAL_OPERATORS.map(op => (
+                          <MenuItem key={op} value={op} sx={{ fontSize: '0.75rem' }}>
+                            {op}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                    <FormControl size="small" sx={{ flex: 1, minWidth: 120 }}>
+                      <Select
+                        value={newCondition.tableId || ''}
+                        onChange={e => setNewCondition({ ...newCondition, tableId: e.target.value, column: '' })}
+                        sx={{ fontSize: '0.75rem', height: 32 }}
+                      >
+                        <MenuItem value="" sx={{ fontSize: '0.75rem' }}>Selecione tabela</MenuItem>
+                        {Array.from(availableTables).map(tableId => {
+                          const tableName = tableId.includes('.') 
+                            ? tableId.split('.').pop() || tableId
+                            : tableId;
+                          return (
+                            <MenuItem key={tableId} value={tableId} sx={{ fontSize: '0.75rem' }}>
+                              {tableName} AS {getTableAlias(tableId)}
+                            </MenuItem>
+                          );
+                        })}
+                      </Select>
+                    </FormControl>
+                    <FormControl size="small" sx={{ flex: 1, minWidth: 120 }} disabled={!newCondition.tableId}>
+                      <Select
+                        value={newCondition.column || ''}
+                        onChange={e => setNewCondition({ ...newCondition, column: e.target.value })}
+                        sx={{ fontSize: '0.75rem', height: 32 }}
+                      >
+                        <MenuItem value="" sx={{ fontSize: '0.75rem' }}>Selecione coluna</MenuItem>
+                        {newCondition.tableId && getColumnsForTable(newCondition.tableId).map(col => (
+                          <MenuItem key={col} value={col} sx={{ fontSize: '0.75rem' }}>
+                            {col}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                    <FormControl size="small" sx={{ minWidth: 120 }}>
+                      <Select
+                        value={newCondition.operator || '='}
+                        onChange={e => setNewCondition({ ...newCondition, operator: e.target.value as WhereOperator })}
+                        sx={{ fontSize: '0.75rem', height: 32 }}
+                      >
+                        {WHERE_OPERATORS.map(op => (
+                          <MenuItem key={op} value={op} sx={{ fontSize: '0.75rem' }}>
+                            {op}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Box>
                   {needsValue(newCondition.operator || '=') && !needsSubquery(newCondition.operator || '=') && (
-                    <input
-                      type="text"
+                    <TextField
+                      size="small"
+                      fullWidth
                       value={formatValue(newCondition.value, newCondition.operator || '=')}
                       onChange={e => {
                         const parsed = parseValue(e.target.value, newCondition.operator || '=');
                         setNewCondition({ ...newCondition, value: parsed });
                       }}
                       placeholder={needsMultipleValues(newCondition.operator || '=') ? 'valor1, valor2, ...' : 'valor'}
-                      className="w-full px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono"
+                      sx={{
+                        '& .MuiInputBase-root': {
+                          fontSize: '0.75rem',
+                          fontFamily: 'monospace',
+                          height: 32,
+                        },
+                      }}
                     />
                   )}
                   {needsSubquery(newCondition.operator || '=') && (
-                    <div className="flex items-center gap-2">
-                      {newCondition.subquery ? (
-                        <div className="flex-1 px-2 py-1 text-xs border border-green-300 dark:border-green-700 rounded bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 font-mono">
-                          Subselect configurado
-                        </div>
-                      ) : (
-                        <div className="flex-1 px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400">
-                          Nenhum subselect configurado
-                        </div>
-                      )}
-                      <button
-                        onClick={() => setEditingSubqueryId('new')}
-                        className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center gap-1"
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Paper
+                        elevation={0}
+                        sx={{
+                          flex: 1,
+                          px: 1,
+                          py: 0.5,
+                          border: 1,
+                          borderColor: newCondition.subquery ? 'success.main' : 'divider',
+                          bgcolor: newCondition.subquery ? alpha(theme.palette.success.main, 0.08) : 'action.hover',
+                          borderRadius: 0.5,
+                        }}
                       >
-                        <Database className="h-3 w-3" />
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            fontFamily: 'monospace',
+                            fontSize: '0.75rem',
+                            color: newCondition.subquery ? 'success.main' : 'text.secondary',
+                          }}
+                        >
+                          {newCondition.subquery ? 'Subselect configurado' : 'Nenhum subselect configurado'}
+                        </Typography>
+                      </Paper>
+                      <Button
+                        onClick={() => setEditingSubqueryId('new')}
+                        size="small"
+                        variant="contained"
+                        startIcon={<StorageIcon sx={{ fontSize: 14 }} />}
+                        sx={{
+                          fontSize: '0.75rem',
+                          px: 1,
+                          py: 0.5,
+                          minHeight: 'auto',
+                        }}
+                      >
                         {newCondition.subquery ? 'Editar' : 'Criar'} Subselect
-                      </button>
-                    </div>
+                      </Button>
+                    </Box>
                   )}
-                  <div className="flex items-center gap-2 justify-end">
-                    <button
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, justifyContent: 'flex-end' }}>
+                    <Button
                       onClick={() => {
                         setIsAdding(false);
                         setNewCondition({
@@ -402,24 +590,27 @@ export default function WhereEditor({
                           logicalOperator: 'AND',
                         });
                       }}
-                      className="px-2 py-1 text-xs text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                      size="small"
+                      sx={{ fontSize: '0.75rem', minHeight: 'auto' }}
                     >
                       Cancelar
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       onClick={handleAdd}
                       disabled={!newCondition.tableId || !newCondition.column || !newCondition.operator}
-                      className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                      size="small"
+                      variant="contained"
+                      sx={{ fontSize: '0.75rem', minHeight: 'auto' }}
                     >
                       Adicionar
-                    </button>
-                  </div>
-                </div>
-              </div>
+                    </Button>
+                  </Box>
+                </Box>
+              </Paper>
             )}
-          </>
+          </Box>
         )}
-      </div>
+      </Box>
 
       {/* Subquery Builder Dialog */}
       {editingSubqueryId && (
@@ -448,7 +639,6 @@ export default function WhereEditor({
           }
         />
       )}
-    </div>
+    </Box>
   );
 }
-

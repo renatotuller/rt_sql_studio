@@ -4,7 +4,24 @@
  */
 
 import { useState } from 'react';
-import { Plus, X, GripVertical, ArrowUp, ArrowDown } from 'lucide-react';
+import {
+  Box,
+  Typography,
+  IconButton,
+  Button,
+  Select,
+  MenuItem,
+  FormControl,
+  Paper,
+  Tooltip,
+  useTheme,
+  alpha,
+} from '@mui/material';
+import {
+  Add as AddIcon,
+  Close as CloseIcon,
+  DragIndicator as DragIndicatorIcon,
+} from '@mui/icons-material';
 import {
   DndContext,
   closestCenter,
@@ -70,7 +87,6 @@ function OrderByItem({
 
   const table = nodes.find(n => n.id === field.tableId);
   const tableAlias = tableAliases.get(field.tableId) || field.tableId;
-  const column = table?.columns.find(c => c.name === field.column);
 
   // Verificar se o campo tem alias no SELECT
   const selectField = availableFields.find(
@@ -81,43 +97,77 @@ function OrderByItem({
     : `${tableAlias}.${field.column}`;
 
   return (
-    <div
+    <Paper
       ref={setNodeRef}
       style={style}
-      className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700"
+      elevation={0}
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 1,
+        p: 1,
+        border: 1,
+        borderColor: 'divider',
+        borderRadius: 1,
+        bgcolor: 'action.hover',
+      }}
     >
-      <button
+      <IconButton
         {...attributes}
         {...listeners}
-        className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-grab active:cursor-grabbing"
+        size="small"
+        sx={{
+          cursor: 'grab',
+          '&:active': {
+            cursor: 'grabbing',
+          },
+          color: 'text.secondary',
+          p: 0.5,
+        }}
       >
-        <GripVertical className="h-4 w-4" />
-      </button>
+        <DragIndicatorIcon sx={{ fontSize: 16 }} />
+      </IconButton>
 
-      <div className="flex-1 flex items-center gap-2">
-        <span className="text-sm font-mono text-gray-700 dark:text-gray-300">
-          {displayName}
-        </span>
-        <select
-          value={field.direction}
-          onChange={e =>
-            onUpdate(field.id, { direction: e.target.value as 'ASC' | 'DESC' })
-          }
-          className="text-xs px-2 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+      <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Typography
+          variant="body2"
+          sx={{
+            fontFamily: 'monospace',
+            fontSize: '0.8125rem',
+            color: 'text.primary',
+          }}
         >
-          <option value="ASC">ASC</option>
-          <option value="DESC">DESC</option>
-        </select>
-      </div>
+          {displayName}
+        </Typography>
+        <FormControl size="small" sx={{ minWidth: 80 }}>
+          <Select
+            value={field.direction}
+            onChange={e =>
+              onUpdate(field.id, { direction: e.target.value as 'ASC' | 'DESC' })
+            }
+            sx={{ fontSize: '0.75rem', height: 28 }}
+          >
+            <MenuItem value="ASC" sx={{ fontSize: '0.75rem' }}>ASC</MenuItem>
+            <MenuItem value="DESC" sx={{ fontSize: '0.75rem' }}>DESC</MenuItem>
+          </Select>
+        </FormControl>
+      </Box>
 
-      <button
-        onClick={() => onRemove(field.id)}
-        className="p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400 rounded transition-colors"
-        title="Remover"
-      >
-        <X className="h-4 w-4" />
-      </button>
-    </div>
+      <Tooltip title="Remover">
+        <IconButton
+          onClick={() => onRemove(field.id)}
+          size="small"
+          sx={{
+            color: 'text.secondary',
+            '&:hover': {
+              color: 'error.main',
+            },
+          }}
+        >
+          <CloseIcon sx={{ fontSize: 16 }} />
+        </IconButton>
+      </Tooltip>
+    </Paper>
   );
 }
 
@@ -131,6 +181,7 @@ export default function OrderByEditor({
   availableFields,
   tableAliases,
 }: OrderByEditorProps) {
+  const theme = useTheme();
   const [isAdding, setIsAdding] = useState(false);
   const [selectedTableId, setSelectedTableId] = useState<string>('');
   const [selectedColumn, setSelectedColumn] = useState<string>('');
@@ -207,104 +258,163 @@ export default function OrderByEditor({
     : [];
 
   return (
-    <div className="h-full flex flex-col bg-white dark:bg-gray-900">
-      <div className="p-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+    <Box
+      sx={{
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        bgcolor: 'background.paper',
+      }}
+    >
+      <Box
+        sx={{
+          p: 1.5,
+          borderBottom: 1,
+          borderColor: 'divider',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}
+      >
+        <Typography variant="subtitle2" fontWeight={600}>
           ORDER BY ({fields.length})
-        </h3>
-        <button
-          onClick={() => setIsAdding(true)}
-          className="p-1.5 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
-          title="Adicionar campo"
-        >
-          <Plus className="h-4 w-4" />
-        </button>
-      </div>
+        </Typography>
+        <Tooltip title="Adicionar campo">
+          <IconButton
+            onClick={() => setIsAdding(true)}
+            size="small"
+            sx={{
+              color: 'text.secondary',
+              '&:hover': {
+                color: 'primary.main',
+                bgcolor: alpha(theme.palette.primary.main, 0.08),
+              },
+            }}
+          >
+            <AddIcon sx={{ fontSize: 16 }} />
+          </IconButton>
+        </Tooltip>
+      </Box>
 
-      <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar">
+      <Box
+        sx={{
+          flex: 1,
+          overflow: 'auto',
+          p: 1.5,
+        }}
+      >
         {/* Formulário de adição */}
         {isAdding && (
-          <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-800 space-y-2">
-            <div className="flex items-center gap-2">
-              <select
-                value={selectedTableId}
-                onChange={e => {
-                  setSelectedTableId(e.target.value);
-                  setSelectedColumn('');
-                }}
-                className="flex-1 text-xs px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              >
-                <option value="">Selecione a tabela</option>
-                {availableTables.map(tableId => {
-                  const table = nodes.find(n => n.id === tableId);
-                  const alias = tableAliases.get(tableId) || tableId;
-                  return (
-                    <option key={tableId} value={tableId}>
-                      {table?.label || tableId} ({alias})
-                    </option>
-                  );
-                })}
-              </select>
+          <Paper
+            elevation={0}
+            sx={{
+              p: 1.5,
+              border: 1,
+              borderColor: 'primary.main',
+              borderRadius: 1,
+              bgcolor: alpha(theme.palette.primary.main, 0.04),
+              mb: 1,
+            }}
+          >
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <FormControl size="small" sx={{ flex: 1 }}>
+                  <Select
+                    value={selectedTableId}
+                    onChange={e => {
+                      setSelectedTableId(e.target.value);
+                      setSelectedColumn('');
+                    }}
+                    sx={{ fontSize: '0.75rem', height: 32 }}
+                  >
+                    <MenuItem value="" sx={{ fontSize: '0.75rem' }}>Selecione a tabela</MenuItem>
+                    {availableTables.map(tableId => {
+                      const table = nodes.find(n => n.id === tableId);
+                      const alias = tableAliases.get(tableId) || tableId;
+                      return (
+                        <MenuItem key={tableId} value={tableId} sx={{ fontSize: '0.75rem' }}>
+                          {table?.label || tableId} ({alias})
+                        </MenuItem>
+                      );
+                    })}
+                  </Select>
+                </FormControl>
 
-              <select
-                value={selectedColumn}
-                onChange={e => setSelectedColumn(e.target.value)}
-                disabled={!selectedTableId}
-                className="flex-1 text-xs px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50"
-              >
-                <option value="">Selecione a coluna</option>
-                {availableColumns.map(col => {
-                  const selectField = availableFields.find(
-                    f => f.tableId === selectedTableId && f.column === col.name
-                  );
-                  return (
-                    <option key={col.name} value={col.name}>
-                      {col.name}
-                      {selectField?.alias && ` (AS ${selectField.alias})`}
-                    </option>
-                  );
-                })}
-              </select>
+                <FormControl size="small" sx={{ flex: 1 }} disabled={!selectedTableId}>
+                  <Select
+                    value={selectedColumn}
+                    onChange={e => setSelectedColumn(e.target.value)}
+                    sx={{ fontSize: '0.75rem', height: 32 }}
+                  >
+                    <MenuItem value="" sx={{ fontSize: '0.75rem' }}>Selecione a coluna</MenuItem>
+                    {availableColumns.map(col => {
+                      const selectField = availableFields.find(
+                        f => f.tableId === selectedTableId && f.column === col.name
+                      );
+                      return (
+                        <MenuItem key={col.name} value={col.name} sx={{ fontSize: '0.75rem' }}>
+                          {col.name}
+                          {selectField?.alias && ` (AS ${selectField.alias})`}
+                        </MenuItem>
+                      );
+                    })}
+                  </Select>
+                </FormControl>
 
-              <select
-                value={selectedDirection}
-                onChange={e =>
-                  setSelectedDirection(e.target.value as 'ASC' | 'DESC')
-                }
-                className="text-xs px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              >
-                <option value="ASC">ASC</option>
-                <option value="DESC">DESC</option>
-              </select>
-            </div>
+                <FormControl size="small" sx={{ minWidth: 80 }}>
+                  <Select
+                    value={selectedDirection}
+                    onChange={e =>
+                      setSelectedDirection(e.target.value as 'ASC' | 'DESC')
+                    }
+                    sx={{ fontSize: '0.75rem', height: 32 }}
+                  >
+                    <MenuItem value="ASC" sx={{ fontSize: '0.75rem' }}>ASC</MenuItem>
+                    <MenuItem value="DESC" sx={{ fontSize: '0.75rem' }}>DESC</MenuItem>
+                  </Select>
+                </FormControl>
+              </Box>
 
-            <div className="flex items-center gap-2">
-              <button
-                onClick={handleAdd}
-                disabled={!selectedTableId || !selectedColumn}
-                className="flex-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white text-xs rounded transition-colors"
-              >
-                Adicionar
-              </button>
-              <button
-                onClick={() => {
-                  setIsAdding(false);
-                  setSelectedTableId('');
-                  setSelectedColumn('');
-                }}
-                className="px-3 py-1.5 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 text-xs rounded transition-colors"
-              >
-                Cancelar
-              </button>
-            </div>
-          </div>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Button
+                  onClick={handleAdd}
+                  disabled={!selectedTableId || !selectedColumn}
+                  variant="contained"
+                  size="small"
+                  fullWidth
+                  sx={{ fontSize: '0.75rem', minHeight: 'auto' }}
+                >
+                  Adicionar
+                </Button>
+                <Button
+                  onClick={() => {
+                    setIsAdding(false);
+                    setSelectedTableId('');
+                    setSelectedColumn('');
+                  }}
+                  size="small"
+                  sx={{ fontSize: '0.75rem', minHeight: 'auto' }}
+                >
+                  Cancelar
+                </Button>
+              </Box>
+            </Box>
+          </Paper>
         )}
 
         {/* Lista de campos */}
         {fields.length === 0 && !isAdding ? (
-          <div className="text-center text-sm text-gray-500 dark:text-gray-400 p-4">
-            Nenhum campo no ORDER BY. Adicione campos do SELECT para ordenar.
-          </div>
+          <Box
+            sx={{
+              textAlign: 'center',
+              color: 'text.secondary',
+              p: 2,
+            }}
+          >
+            <Typography variant="body2">
+              Nenhum campo no ORDER BY. Adicione campos do SELECT para ordenar.
+            </Typography>
+          </Box>
         ) : (
           <DndContext
             sensors={sensors}
@@ -315,24 +425,25 @@ export default function OrderByEditor({
               items={fields.map(f => f.id)}
               strategy={verticalListSortingStrategy}
             >
-              {fields
-                .sort((a, b) => a.order - b.order)
-                .map(field => (
-                  <OrderByItem
-                    key={field.id}
-                    field={field}
-                    onUpdate={onUpdate}
-                    onRemove={onRemove}
-                    nodes={nodes}
-                    availableFields={availableFields}
-                    tableAliases={tableAliases}
-                  />
-                ))}
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                {fields
+                  .sort((a, b) => a.order - b.order)
+                  .map(field => (
+                    <OrderByItem
+                      key={field.id}
+                      field={field}
+                      onUpdate={onUpdate}
+                      onRemove={onRemove}
+                      nodes={nodes}
+                      availableFields={availableFields}
+                      tableAliases={tableAliases}
+                    />
+                  ))}
+              </Box>
             </SortableContext>
           </DndContext>
         )}
-      </div>
-    </div>
+      </Box>
+    </Box>
   );
 }
-

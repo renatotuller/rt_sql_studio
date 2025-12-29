@@ -5,6 +5,7 @@
 
 import { useDroppable } from '@dnd-kit/core';
 import { useMemo } from 'react';
+import { Box, Paper, Typography, useTheme, alpha } from '@mui/material';
 
 interface SelectDropZoneProps {
   id: string;
@@ -13,6 +14,7 @@ interface SelectDropZoneProps {
 }
 
 export default function SelectDropZone({ id, children, isEmpty = false }: SelectDropZoneProps) {
+  const theme = useTheme();
   const { setNodeRef, isOver } = useDroppable({
     id,
     data: {
@@ -20,25 +22,51 @@ export default function SelectDropZone({ id, children, isEmpty = false }: Select
     },
   });
 
-  const className = useMemo(() => {
-    const base = 'h-full flex flex-col bg-white dark:bg-gray-900 transition-colors';
-    if (isOver) {
-      return `${base} bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-400 dark:border-blue-500 border-dashed`;
-    }
-    return base;
-  }, [isOver]);
-
   return (
-    <div ref={setNodeRef} className={className}>
+    <Box
+      ref={setNodeRef}
+      sx={{
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        bgcolor: 'background.paper',
+        position: 'relative',
+        border: isOver ? 2 : 0,
+        borderColor: isOver ? 'primary.main' : 'transparent',
+        borderStyle: isOver ? 'dashed' : 'solid',
+        borderRadius: 1,
+        bgcolor: isOver ? alpha(theme.palette.primary.main, 0.04) : 'background.paper',
+        transition: 'all 0.2s',
+      }}
+    >
       {children}
       {isOver && isEmpty && (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-          <div className="bg-blue-500 text-white px-4 py-2 rounded-lg shadow-lg text-sm font-medium animate-pulse">
-            Solte aqui para adicionar ao SELECT
-          </div>
-        </div>
+        <Box
+          sx={{
+            position: 'absolute',
+            inset: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            pointerEvents: 'none',
+            zIndex: 10,
+          }}
+        >
+          <Paper
+            elevation={4}
+            sx={{
+              px: 2,
+              py: 1,
+              bgcolor: 'primary.main',
+              color: 'primary.contrastText',
+            }}
+          >
+            <Typography variant="body2" fontWeight={500}>
+              Solte aqui para adicionar ao SELECT
+            </Typography>
+          </Paper>
+        </Box>
       )}
-    </div>
+    </Box>
   );
 }
-

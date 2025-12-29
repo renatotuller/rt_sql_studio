@@ -169,54 +169,86 @@ export default function Dashboard() {
           Nova Conexão
         </Button>
       }
+      fullscreen
     >
-      <Box sx={{ mb: 1 }}>
-        <Typography variant="body2" color="text.secondary">
-          Gerencie suas conexões de banco de dados e visualize schemas
-        </Typography>
-      </Box>
+      <Box 
+        sx={{ 
+          display: 'flex',
+          flexDirection: 'column',
+          height: '100%',
+          overflow: 'hidden',
+        }}
+      >
+        {/* Header fixo */}
+        <Box sx={{ flexShrink: 0, mb: 2 }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Gerencie suas conexões de banco de dados e visualize schemas
+          </Typography>
 
-      {/* Cards de Estatísticas Gerais */}
-      <Grid container spacing={2} sx={{ mb: 3 }}>
-        {statCards.map((stat, index) => (
-          <Grid item xs={12} sm={6} md={3} key={index}>
-            <Card
-              sx={{
-                background: `linear-gradient(135deg, ${stat.bgColor} 0%, ${alpha(stat.bgColor, 0.5)} 100%)`,
-                border: `1px solid ${alpha(stat.color, 0.2)}`,
-                borderRadius: 3,
-                height: '100%',
-              }}
-            >
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <Box>
-                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
-                      {stat.title}
-                    </Typography>
-                    <Typography
-                      variant="h4"
-                      sx={{
-                        fontWeight: 700,
-                        color: stat.color,
-                        mt: 0.5,
-                      }}
-                    >
-                      {stat.value}
-                    </Typography>
-                  </Box>
-                  <Box sx={{ color: stat.color, opacity: 0.6 }}>
-                    {stat.icon}
-                  </Box>
-                </Box>
-              </CardContent>
-            </Card>
+          {/* Cards de Estatísticas Gerais */}
+          <Grid container spacing={2}>
+            {statCards.map((stat, index) => (
+              <Grid item xs={12} sm={6} md={3} key={index}>
+                <Card
+                  sx={{
+                    background: `linear-gradient(135deg, ${stat.bgColor} 0%, ${alpha(stat.bgColor, 0.5)} 100%)`,
+                    border: `1px solid ${alpha(stat.color, 0.2)}`,
+                    borderRadius: 3,
+                    height: '100%',
+                  }}
+                >
+                  <CardContent>
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <Box>
+                        <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
+                          {stat.title}
+                        </Typography>
+                        <Typography
+                          variant="h4"
+                          sx={{
+                            fontWeight: 700,
+                            color: stat.color,
+                            mt: 0.5,
+                          }}
+                        >
+                          {stat.value}
+                        </Typography>
+                      </Box>
+                      <Box sx={{ color: stat.color, opacity: 0.6 }}>
+                        {stat.icon}
+                      </Box>
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Grid>
+            ))}
           </Grid>
-        ))}
-      </Grid>
+        </Box>
 
-      {/* Cards de Conexões */}
-      {connections.length === 0 ? (
+        {/* Área de conexões com scroll */}
+        <Box 
+          sx={{ 
+            flexGrow: 1,
+            overflowY: 'auto',
+            overflowX: 'hidden',
+            pr: 1,
+            '&::-webkit-scrollbar': {
+              width: '8px',
+            },
+            '&::-webkit-scrollbar-track': {
+              backgroundColor: 'transparent',
+            },
+            '&::-webkit-scrollbar-thumb': {
+              backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)',
+              borderRadius: '4px',
+              '&:hover': {
+                backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.3)',
+              },
+            },
+          }}
+        >
+          {/* Cards de Conexões */}
+          {connections.length === 0 ? (
         <Card>
           <CardContent>
             <Box sx={{ textAlign: 'center', py: 6 }}>
@@ -427,7 +459,9 @@ export default function Dashboard() {
               </Grid>
             ))}
           </Grid>
-      )}
+          )}
+        </Box>
+      </Box>
     </PageLayout>
   );
 }

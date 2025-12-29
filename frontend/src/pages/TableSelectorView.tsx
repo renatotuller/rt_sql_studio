@@ -16,7 +16,35 @@ import ReactFlow, {
   Viewport,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-import { ArrowLeft, ZoomIn, ZoomOut, Maximize2, RotateCcw, LayoutGrid, Network, Grid3x3, GitBranch, EyeOff, Sparkles, Boxes, Eye, List } from 'lucide-react';
+import {
+  Box,
+  Button,
+  IconButton,
+  Typography,
+  Paper,
+  ToggleButton,
+  ToggleButtonGroup,
+  Tooltip,
+  useTheme,
+  alpha,
+  Divider,
+} from '@mui/material';
+import {
+  ArrowBack as ArrowLeftIcon,
+  ZoomIn as ZoomInIcon,
+  ZoomOut as ZoomOutIcon,
+  Fullscreen as Maximize2Icon,
+  RotateLeft as RotateCcwIcon,
+  ViewModule as LayoutGridIcon,
+  Hub as NetworkIcon,
+  GridOn as Grid3x3Icon,
+  AccountTree as GitBranchIcon,
+  VisibilityOff as EyeOffIcon,
+  AutoAwesome as SparklesIcon,
+  ViewComfy as BoxesIcon,
+  Visibility as EyeIcon,
+  List as ListIcon,
+} from '@mui/icons-material';
 import { schemaApi, connectionsApi } from '../api/client';
 import DatabaseSchemaNode from '../components/schema/DatabaseSchemaNode';
 import CustomEdge from '../components/schema/CustomEdge';
@@ -445,197 +473,218 @@ function TableSelectorViewContent() {
     reactFlowInstance.current?.setViewport({ x: 0, y: 0, zoom: 0.8 }, { duration: 300 });
   }, []);
 
+  const theme = useTheme();
+
   if (loading) {
     return (
-      <div className="card">
+      <Paper sx={{ p: 3 }}>
         <InformativeLoading 
           message="Carregando lista de tabelas"
           type="table"
           estimatedTime={8}
         />
-      </div>
+      </Paper>
     );
   }
 
   if (error) {
     return (
-      <div>
-        <div className="mb-6">
-          <button
+      <Box>
+        <Box sx={{ mb: 3 }}>
+          <Button
             onClick={() => navigate('/connections')}
-            className="btn btn-secondary mb-2"
+            variant="outlined"
+            startIcon={<ArrowLeftIcon />}
+            sx={{ mb: 2 }}
           >
-            <ArrowLeft className="h-4 w-4 mr-2 inline" />
             Voltar
-          </button>
-        </div>
-        <div className="card">
-          <div className="text-center py-12">
-            <p className="text-red-600 dark:text-red-400 mb-4">{error}</p>
-            <button onClick={() => navigate('/connections')} className="btn btn-secondary">
+          </Button>
+        </Box>
+        <Paper sx={{ p: 3 }}>
+          <Box sx={{ textAlign: 'center', py: 6 }}>
+            <Typography color="error" sx={{ mb: 2 }}>{error}</Typography>
+            <Button onClick={() => navigate('/connections')} variant="outlined">
               Voltar para Conexões
-            </button>
-          </div>
-        </div>
-      </div>
+            </Button>
+          </Box>
+        </Paper>
+      </Box>
     );
   }
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden">
-      {/* Barra Superior */}
-      <div 
-        className="flex-shrink-0 flex flex-col bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700" 
-        style={{ 
-          paddingTop: '0.25rem',
-          paddingBottom: '0.25rem',
-          paddingLeft: '1rem',
-          paddingRight: '1rem',
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
+      {/* Top Bar com título e botões de ação */}
+      <Box 
+        sx={{ 
+          flexShrink: 0, 
+          px: 2, 
+          py: 0.5, 
+          borderBottom: 1, 
+          borderColor: 'divider',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          minHeight: 'auto',
         }}
       >
-        {/* Título */}
-        <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-          Seletor de Tabelas: {connectionName}
-        </h1>
-        {/* Controles em uma única linha */}
-        <div className="flex items-center gap-2 flex-nowrap overflow-x-auto">
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          <IconButton
+            onClick={() => navigate(`/schema/${connId}`)}
+            size="small"
+            sx={{
+              p: 0.5,
+              color: 'text.secondary',
+              '&:hover': {
+                color: 'text.primary',
+                bgcolor: 'action.hover',
+              },
+            }}
+          >
+            <ArrowLeftIcon fontSize="small" />
+          </IconButton>
+          <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.8125rem', lineHeight: 1.2 }}>
+            Seletor de Tabelas: {connectionName}
+          </Typography>
+        </Box>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'nowrap', overflowX: 'auto' }}>
           <ViewSwitcher currentView="table" />
           {/* Botão de Snap to Grid (Toggle) */}
           {nodes.length > 0 && (
-            <button
-              onClick={() => setSnapToGrid(!snapToGrid)}
-              className={`btn ${snapToGrid ? 'btn-primary' : 'btn-secondary'} flex items-center h-10 flex-shrink-0`}
-              title={snapToGrid ? 'Desativar ajuste à grade' : 'Ativar ajuste à grade (arraste os nós para alinhar)'}
-            >
-              <Grid3x3 className="h-4 w-4 mr-2" />
-              {snapToGrid ? 'Alinhar: ON' : 'Alinhar: OFF'}
-            </button>
+            <Tooltip title={snapToGrid ? 'Desativar ajuste à grade' : 'Ativar ajuste à grade (arraste os nós para alinhar)'}>
+              <Button
+                onClick={() => setSnapToGrid(!snapToGrid)}
+                variant={snapToGrid ? 'contained' : 'outlined'}
+                size="small"
+                startIcon={<Grid3x3Icon />}
+                sx={{ flexShrink: 0, fontSize: '0.8125rem' }}
+              >
+                {snapToGrid ? 'Alinhar: ON' : 'Alinhar: OFF'}
+              </Button>
+            </Tooltip>
           )}
           {/* Controles de Layout */}
           {nodes.length > 0 && (
-            <div className="flex items-center gap-1 bg-white dark:bg-gray-800 rounded-lg shadow-md p-1 border border-gray-200 dark:border-gray-700 flex-shrink-0">
-              <button
-                onClick={() => handleApplyLayout('hierarchical')}
-                className={`p-2 rounded transition-colors ${
-                  layoutType === 'hierarchical'
-                    ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300'
-                    : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
-                }`}
-                title="Layout Hierárquico"
+            <Paper
+              elevation={2}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 0.5,
+                p: 0.5,
+                border: 1,
+                borderColor: 'divider',
+                flexShrink: 0,
+              }}
+            >
+              <ToggleButtonGroup
+                value={layoutType}
+                exclusive
+                onChange={(_, value) => value && handleApplyLayout(value)}
+                size="small"
               >
-                <GitBranch className="h-4 w-4" />
-              </button>
-              <button
-                onClick={() => handleApplyLayout('circular')}
-                className={`p-2 rounded transition-colors ${
-                  layoutType === 'circular'
-                    ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300'
-                    : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
-                }`}
-                title="Layout Circular"
-              >
-                <Network className="h-4 w-4" />
-              </button>
-              <button
-                onClick={() => handleApplyLayout('grid')}
-                className={`p-2 rounded transition-colors ${
-                  layoutType === 'grid'
-                    ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300'
-                    : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
-                }`}
-                title="Layout em Grade"
-              >
-                <Grid3x3 className="h-4 w-4" />
-              </button>
-              <button
-                onClick={() => handleApplyLayout('force')}
-                className={`p-2 rounded transition-colors ${
-                  layoutType === 'force'
-                    ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300'
-                    : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
-                }`}
-                title="Layout de Força"
-              >
-                <LayoutGrid className="h-4 w-4" />
-              </button>
-              <button
-                onClick={() => handleApplyLayout('orthogonal')}
-                className={`p-2 rounded transition-colors ${
-                  layoutType === 'orthogonal'
-                    ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300'
-                    : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
-                }`}
-                title="Layout Ortogonal (90 graus)"
-              >
-                <Boxes className="h-4 w-4" />
-              </button>
-            </div>
+                <Tooltip title="Layout Hierárquico">
+                  <ToggleButton value="hierarchical" size="small">
+                    <GitBranchIcon fontSize="small" />
+                  </ToggleButton>
+                </Tooltip>
+                <Tooltip title="Layout Circular">
+                  <ToggleButton value="circular" size="small">
+                    <NetworkIcon fontSize="small" />
+                  </ToggleButton>
+                </Tooltip>
+                <Tooltip title="Layout em Grade">
+                  <ToggleButton value="grid" size="small">
+                    <Grid3x3Icon fontSize="small" />
+                  </ToggleButton>
+                </Tooltip>
+                <Tooltip title="Layout de Força">
+                  <ToggleButton value="force" size="small">
+                    <LayoutGridIcon fontSize="small" />
+                  </ToggleButton>
+                </Tooltip>
+                <Tooltip title="Layout Ortogonal (90 graus)">
+                  <ToggleButton value="orthogonal" size="small">
+                    <BoxesIcon fontSize="small" />
+                  </ToggleButton>
+                </Tooltip>
+              </ToggleButtonGroup>
+            </Paper>
           )}
           {/* Modo Simplificado */}
           {nodes.length > 0 && (
-            <button
-              onClick={() => setSimplifiedView(!simplifiedView)}
-              className={`btn ${simplifiedView ? 'btn-primary' : 'btn-secondary'} flex items-center h-10 flex-shrink-0`}
-              title={simplifiedView ? 'Modo Detalhado' : 'Modo Simplificado'}
-            >
-              {simplifiedView ? <Eye className="h-4 w-4 mr-2" /> : <EyeOff className="h-4 w-4 mr-2" />}
-              {simplifiedView ? 'Detalhado' : 'Simplificado'}
-            </button>
+            <Tooltip title={simplifiedView ? 'Modo Detalhado' : 'Modo Simplificado'}>
+              <Button
+                onClick={() => setSimplifiedView(!simplifiedView)}
+                variant={simplifiedView ? 'contained' : 'outlined'}
+                size="small"
+                startIcon={simplifiedView ? <EyeIcon /> : <EyeOffIcon />}
+                sx={{ flexShrink: 0, fontSize: '0.8125rem' }}
+              >
+                {simplifiedView ? 'Detalhado' : 'Simplificado'}
+              </Button>
+            </Tooltip>
           )}
           {/* Zoom Semântico */}
           {nodes.length > 0 && (
-            <button
-              onClick={() => setSemanticZoomEnabled(!semanticZoomEnabled)}
-              className={`btn ${semanticZoomEnabled ? 'btn-primary' : 'btn-secondary'} flex items-center h-10 flex-shrink-0`}
-              title={semanticZoomEnabled ? 'Desativar Zoom Semântico' : 'Ativar Zoom Semântico'}
-            >
-              <ZoomIn className="h-4 w-4 mr-2" />
-              {semanticZoomEnabled ? 'Zoom Semântico' : 'Zoom Fixo'}
-            </button>
+            <Tooltip title={semanticZoomEnabled ? 'Desativar Zoom Semântico' : 'Ativar Zoom Semântico'}>
+              <Button
+                onClick={() => setSemanticZoomEnabled(!semanticZoomEnabled)}
+                variant={semanticZoomEnabled ? 'contained' : 'outlined'}
+                size="small"
+                startIcon={<ZoomInIcon />}
+                sx={{ flexShrink: 0, fontSize: '0.8125rem' }}
+              >
+                {semanticZoomEnabled ? 'Zoom Semântico' : 'Zoom Fixo'}
+              </Button>
+            </Tooltip>
           )}
           {/* Controles de Zoom */}
           {nodes.length > 0 && (
-            <div className="flex items-center gap-2 bg-white dark:bg-gray-800 rounded-lg shadow-md p-2 border border-gray-200 dark:border-gray-700 flex-shrink-0">
-              <button
-                onClick={handleZoomIn}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
-                title="Zoom In"
-              >
-                <ZoomIn className="h-4 w-4 text-gray-700 dark:text-gray-300" />
-              </button>
-              <button
-                onClick={handleZoomOut}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
-                title="Zoom Out"
-              >
-                <ZoomOut className="h-4 w-4 text-gray-700 dark:text-gray-300" />
-              </button>
-              <div className="border-l border-gray-200 dark:border-gray-700 h-6 mx-1"></div>
-              <button
-                onClick={handleFitView}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
-                title="Ajustar à Tela"
-              >
-                <Maximize2 className="h-4 w-4 text-gray-700 dark:text-gray-300" />
-              </button>
-              <button
-                onClick={handleResetView}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
-                title="Resetar Visualização"
-              >
-                <RotateCcw className="h-4 w-4 text-gray-700 dark:text-gray-300" />
-              </button>
-              <div className="border-l border-gray-200 dark:border-gray-700 h-6 mx-1"></div>
-              <div className="px-2 py-1 text-xs text-gray-600 dark:text-gray-400 font-medium min-w-[45px] text-center">
+            <Paper
+              elevation={2}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1,
+                p: 1,
+                border: 1,
+                borderColor: 'divider',
+                flexShrink: 0,
+              }}
+            >
+              <Tooltip title="Zoom In">
+                <IconButton onClick={handleZoomIn} size="small">
+                  <ZoomInIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Zoom Out">
+                <IconButton onClick={handleZoomOut} size="small">
+                  <ZoomOutIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+              <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
+              <Tooltip title="Ajustar à Tela">
+                <IconButton onClick={handleFitView} size="small">
+                  <Maximize2Icon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Resetar Visualização">
+                <IconButton onClick={handleResetView} size="small">
+                  <RotateCcwIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+              <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
+              <Typography variant="caption" sx={{ px: 1, minWidth: 45, textAlign: 'center', fontWeight: 500 }}>
                 {Math.round(zoomLevel * 100)}%
-              </div>
-            </div>
+              </Typography>
+            </Paper>
           )}
-        </div>
-      </div>
+        </Box>
+      </Box>
 
       {/* Container Principal: Seletor + Canvas */}
-      <div className="flex-1 flex overflow-hidden">
+      <Box sx={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
         {/* Seletor de Tabelas em Cascata */}
         {showTableSelector && (
           <CascadingTableSelector
@@ -651,11 +700,12 @@ function TableSelectorViewContent() {
         )}
 
         {/* Canvas para visualização */}
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           {nodes.length > 0 ? (
-            <div
-              className="flex-1 bg-white dark:bg-gray-800"
-              style={{
+            <Box
+              sx={{
+                flex: 1,
+                bgcolor: 'background.default',
                 position: 'relative',
                 overflow: 'hidden',
               }}
@@ -715,22 +765,22 @@ function TableSelectorViewContent() {
               }}
             />
           </ReactFlow>
-            </div>
+            </Box>
           ) : (
-            <div className="flex-1 flex items-center justify-center">
-              <div className="text-center py-12 flex flex-col items-center">
-                <List className="h-16 w-16 mx-auto mb-4 text-gray-400 dark:text-gray-600" />
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+            <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Box sx={{ textAlign: 'center', py: 6, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <ListIcon sx={{ fontSize: 64, mb: 2, color: 'text.secondary' }} />
+                <Typography variant="h4" fontWeight={700} sx={{ mb: 1 }}>
                   Seletor de Tabelas
-                </h2>
-                <p className="text-gray-600 dark:text-gray-400 mb-6">
+                </Typography>
+                <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
                   Selecione uma tabela principal no painel lateral para visualizar suas tabelas relacionadas
-                </p>
-              </div>
-            </div>
+                </Typography>
+              </Box>
+            </Box>
           )}
-        </div>
-      </div>
+        </Box>
+      </Box>
 
       {/* Dialog de Detalhes do Relacionamento */}
       <RelationshipDetailsDialog
@@ -749,7 +799,7 @@ function TableSelectorViewContent() {
           type: selectedEdge.data?.relationshipType,
         } : null}
       />
-    </div>
+    </Box>
   );
 }
 

@@ -4,7 +4,29 @@
  */
 
 import { useState, useEffect } from 'react';
-import { X, Check, HelpCircle } from 'lucide-react';
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  IconButton,
+  Button,
+  TextField,
+  Box,
+  Typography,
+  Paper,
+  Grid,
+  Chip,
+  useTheme,
+  alpha,
+} from '@mui/material';
+import {
+  Close as CloseIcon,
+  Check as CheckIcon,
+  HelpOutline as HelpOutlineIcon,
+  FormatColorText as FormatColorTextIcon,
+  Calculate as CalculateIcon,
+} from '@mui/icons-material';
 import type { SelectField } from '../../types/query-builder';
 
 interface FieldExpressionEditorProps {
@@ -107,6 +129,7 @@ export default function FieldExpressionEditor({
   onCancel,
   dbType = 'mysql',
 }: FieldExpressionEditorProps) {
+  const theme = useTheme();
   const isCustomField = !field.tableId || !field.column;
   const defaultExpression = isCustomField ? '' : (field.customExpression || `${tableAlias}.${field.column}`);
   
@@ -246,230 +269,399 @@ export default function FieldExpressionEditor({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-2xl w-full max-w-3xl">
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-              {isCustomField ? 'Adicionar Coluna Personalizada' : 'Editar Expressão SQL'}
-            </h2>
-            {!isCustomField && (
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                {tableAlias}.{field.column}
-              </p>
-            )}
-            {isCustomField && (
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                Crie uma expressão SQL personalizada (ex: col1 + col2, SUM(col), etc.)
-              </p>
-            )}
-          </div>
-          <button
-            onClick={onCancel}
-            className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
-            title="Cancelar (Esc)"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
+    <Dialog
+      open={true}
+      onClose={onCancel}
+      maxWidth="md"
+      fullWidth
+      PaperProps={{
+        sx: {
+          maxHeight: '90vh',
+        },
+      }}
+    >
+      <DialogTitle
+        sx={{
+          display: 'flex',
+          alignItems: 'flex-start',
+          justifyContent: 'space-between',
+          pb: 1.5,
+        }}
+      >
+        <Box>
+          <Typography variant="h6">
+            {isCustomField ? 'Adicionar Coluna Personalizada' : 'Editar Expressão SQL'}
+          </Typography>
+          {!isCustomField && (
+            <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+              {tableAlias}.{field.column}
+            </Typography>
+          )}
+          {isCustomField && (
+            <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+              Crie uma expressão SQL personalizada (ex: col1 + col2, SUM(col), etc.)
+            </Typography>
+          )}
+        </Box>
+        <IconButton
+          onClick={onCancel}
+          size="small"
+          sx={{
+            color: 'text.secondary',
+            '&:hover': {
+              bgcolor: 'action.hover',
+            },
+          }}
+        >
+          <CloseIcon />
+        </IconButton>
+      </DialogTitle>
 
-        {/* Body */}
-        <div className="p-4 space-y-4">
+      <DialogContent dividers sx={{ overflow: 'auto' }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           {/* Expressão SQL */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <Box>
+            <Typography variant="body2" fontWeight={500} sx={{ mb: 1 }}>
               Expressão SQL
-            </label>
-            <div className="flex gap-2">
-              <textarea
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <TextField
                 id="expression-input"
+                fullWidth
+                multiline
+                rows={isCustomField ? 4 : 3}
                 value={expression}
                 onChange={e => setExpression(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder={isCustomField ? "Ex: t1.col1 + t1.col2, SUM(t1.valor), COALESCE(t1.nome, ''), (t1.preco * t1.quantidade) AS total" : `${tableAlias}.${field.column}`}
-                className="flex-1 px-3 py-2 text-sm font-mono border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                rows={isCustomField ? 4 : 3}
+                sx={{
+                  '& .MuiInputBase-root': {
+                    fontFamily: 'monospace',
+                    fontSize: '0.875rem',
+                  },
+                }}
               />
-              <div className="flex flex-col gap-2 flex-shrink-0">
-                <button
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, flexShrink: 0 }}>
+                <Button
                   onClick={() => {
                     setShowFunctions(!showFunctions);
                     setShowOperators(false);
                     setShowFormats(false);
                   }}
-                  className="px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  variant="contained"
+                  size="small"
+                  startIcon={<HelpOutlineIcon />}
+                  sx={{ minWidth: 'auto', px: 1.5 }}
                   title="Funções SQL"
                 >
-                  <HelpCircle className="h-4 w-4" />
-                </button>
-                <button
+                  Funções
+                </Button>
+                <Button
                   onClick={() => {
                     setShowFormats(!showFormats);
                     setShowFunctions(false);
                     setShowOperators(false);
                   }}
-                  className="px-3 py-2 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-xs"
+                  variant="contained"
+                  color="secondary"
+                  size="small"
+                  startIcon={<FormatColorTextIcon />}
+                  sx={{ minWidth: 'auto', px: 1.5 }}
                   title="Formatações de Dados"
                 >
-                  Aa
-                </button>
+                  Format
+                </Button>
                 {isCustomField && (
-                  <button
+                  <Button
                     onClick={() => {
                       setShowOperators(!showOperators);
                       setShowFunctions(false);
                       setShowFormats(false);
                     }}
-                    className="px-3 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                    variant="contained"
+                    color="success"
+                    size="small"
+                    startIcon={<CalculateIcon />}
+                    sx={{ minWidth: 'auto', px: 1.5 }}
                     title="Operadores"
                   >
-                    +-*/
-                  </button>
+                    Ops
+                  </Button>
                 )}
-              </div>
-            </div>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              Use <kbd className="px-1 py-0.5 bg-gray-100 dark:bg-gray-700 rounded">Ctrl+Enter</kbd> para salvar, <kbd className="px-1 py-0.5 bg-gray-100 dark:bg-gray-700 rounded">Esc</kbd> para cancelar
-            </p>
-          </div>
+              </Box>
+            </Box>
+            <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+              Use <Chip label="Ctrl+Enter" size="small" sx={{ height: 20, fontSize: '0.6875rem' }} /> para salvar,{' '}
+              <Chip label="Esc" size="small" sx={{ height: 20, fontSize: '0.6875rem' }} /> para cancelar
+            </Typography>
+          </Box>
 
           {/* Lista de Funções */}
           {showFunctions && (
-            <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 bg-gray-50 dark:bg-gray-900 max-h-64 overflow-y-auto custom-scrollbar">
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">
+            <Paper
+              elevation={0}
+              sx={{
+                p: 1.5,
+                border: 1,
+                borderColor: 'divider',
+                borderRadius: 1,
+                bgcolor: 'action.hover',
+                maxHeight: 256,
+                overflow: 'auto',
+              }}
+            >
+              <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1 }}>
                 Funções SQL Disponíveis
-              </h3>
-              <div className="grid grid-cols-2 gap-2">
+              </Typography>
+              <Grid container spacing={1}>
                 {SQL_FUNCTIONS.map(func => (
-                  <button
-                    key={func.name}
-                    onClick={() => handleInsertFunction(func.name)}
-                    className="text-left px-3 py-2 text-xs bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-300 dark:hover:border-blue-600 transition-colors"
-                    title={func.description}
-                  >
-                    <div className="font-mono font-semibold text-blue-600 dark:text-blue-400">
-                      {func.name}
-                    </div>
-                    <div className="text-gray-600 dark:text-gray-400 mt-0.5">
-                      {func.description}
-                    </div>
-                    <div className="text-gray-500 dark:text-gray-500 text-[10px] mt-1 font-mono">
-                      {func.example}
-                    </div>
-                  </button>
+                  <Grid item xs={12} sm={6} key={func.name}>
+                    <Paper
+                      component="button"
+                      onClick={() => handleInsertFunction(func.name)}
+                      elevation={0}
+                      sx={{
+                        p: 1.5,
+                        width: '100%',
+                        textAlign: 'left',
+                        border: 1,
+                        borderColor: 'divider',
+                        borderRadius: 1,
+                        bgcolor: 'background.paper',
+                        cursor: 'pointer',
+                        '&:hover': {
+                          bgcolor: alpha(theme.palette.primary.main, 0.08),
+                          borderColor: 'primary.main',
+                        },
+                      }}
+                    >
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          fontFamily: 'monospace',
+                          fontWeight: 600,
+                          color: 'primary.main',
+                          mb: 0.25,
+                        }}
+                      >
+                        {func.name}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                        {func.description}
+                      </Typography>
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          fontFamily: 'monospace',
+                          fontSize: '0.625rem',
+                          color: 'text.secondary',
+                        }}
+                      >
+                        {func.example}
+                      </Typography>
+                    </Paper>
+                  </Grid>
                 ))}
-              </div>
-            </div>
+              </Grid>
+            </Paper>
           )}
 
           {/* Lista de Formatações */}
           {showFormats && (
-            <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 bg-gray-50 dark:bg-gray-900 max-h-64 overflow-y-auto custom-scrollbar">
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">
+            <Paper
+              elevation={0}
+              sx={{
+                p: 1.5,
+                border: 1,
+                borderColor: 'divider',
+                borderRadius: 1,
+                bgcolor: 'action.hover',
+                maxHeight: 256,
+                overflow: 'auto',
+              }}
+            >
+              <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1 }}>
                 Formatações de Dados ({dbType === 'sqlserver' ? 'SQL Server' : 'MySQL'})
-              </h3>
-              <div className="grid grid-cols-2 gap-2">
+              </Typography>
+              <Grid container spacing={1}>
                 {formatFunctions.map(format => (
-                  <button
-                    key={format.name}
-                    onClick={() => handleInsertFormat(format)}
-                    className="text-left px-3 py-2 text-xs bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded hover:bg-purple-50 dark:hover:bg-purple-900/20 hover:border-purple-300 dark:hover:border-purple-600 transition-colors"
-                    title={format.description}
-                  >
-                    <div className="font-semibold text-purple-600 dark:text-purple-400">
-                      {format.name}
-                    </div>
-                    <div className="text-gray-600 dark:text-gray-400 mt-0.5 text-[10px]">
-                      {format.description}
-                    </div>
-                    <div className="text-gray-500 dark:text-gray-500 text-[9px] mt-1 font-mono">
-                      {format.example}
-                    </div>
-                  </button>
+                  <Grid item xs={12} sm={6} key={format.name}>
+                    <Paper
+                      component="button"
+                      onClick={() => handleInsertFormat(format)}
+                      elevation={0}
+                      sx={{
+                        p: 1.5,
+                        width: '100%',
+                        textAlign: 'left',
+                        border: 1,
+                        borderColor: 'divider',
+                        borderRadius: 1,
+                        bgcolor: 'background.paper',
+                        cursor: 'pointer',
+                        '&:hover': {
+                          bgcolor: alpha(theme.palette.secondary.main, 0.08),
+                          borderColor: 'secondary.main',
+                        },
+                      }}
+                    >
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          fontWeight: 600,
+                          color: 'secondary.main',
+                          mb: 0.25,
+                        }}
+                      >
+                        {format.name}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5, fontSize: '0.625rem' }}>
+                        {format.description}
+                      </Typography>
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          fontFamily: 'monospace',
+                          fontSize: '0.625rem',
+                          color: 'text.secondary',
+                        }}
+                      >
+                        {format.example}
+                      </Typography>
+                    </Paper>
+                  </Grid>
                 ))}
-              </div>
-            </div>
+              </Grid>
+            </Paper>
           )}
 
           {/* Lista de Operadores (apenas para colunas personalizadas) */}
           {showOperators && isCustomField && (
-            <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 bg-gray-50 dark:bg-gray-900">
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">
+            <Paper
+              elevation={0}
+              sx={{
+                p: 1.5,
+                border: 1,
+                borderColor: 'divider',
+                borderRadius: 1,
+                bgcolor: 'action.hover',
+              }}
+            >
+              <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1 }}>
                 Operadores Matemáticos
-              </h3>
-              <div className="grid grid-cols-3 gap-2">
+              </Typography>
+              <Grid container spacing={1}>
                 {OPERATORS.map(op => (
-                  <button
-                    key={op.symbol}
-                    onClick={() => handleInsertOperator(op.symbol)}
-                    className="px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded hover:bg-green-50 dark:hover:bg-green-900/20 hover:border-green-300 dark:hover:border-green-600 transition-colors"
-                    title={op.description}
-                  >
-                    <div className="font-mono font-semibold text-green-600 dark:text-green-400 text-lg">
-                      {op.symbol}
-                    </div>
-                    <div className="text-gray-600 dark:text-gray-400 text-xs mt-0.5">
-                      {op.description}
-                    </div>
-                    <div className="text-gray-500 dark:text-gray-500 text-[10px] mt-1 font-mono">
-                      {op.example}
-                    </div>
-                  </button>
+                  <Grid item xs={12} sm={4} key={op.symbol}>
+                    <Paper
+                      component="button"
+                      onClick={() => handleInsertOperator(op.symbol)}
+                      elevation={0}
+                      sx={{
+                        p: 1.5,
+                        width: '100%',
+                        textAlign: 'left',
+                        border: 1,
+                        borderColor: 'divider',
+                        borderRadius: 1,
+                        bgcolor: 'background.paper',
+                        cursor: 'pointer',
+                        '&:hover': {
+                          bgcolor: alpha(theme.palette.success.main, 0.08),
+                          borderColor: 'success.main',
+                        },
+                      }}
+                    >
+                      <Typography
+                        variant="h6"
+                        sx={{
+                          fontFamily: 'monospace',
+                          fontWeight: 600,
+                          color: 'success.main',
+                          mb: 0.5,
+                        }}
+                      >
+                        {op.symbol}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                        {op.description}
+                      </Typography>
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          fontFamily: 'monospace',
+                          fontSize: '0.625rem',
+                          color: 'text.secondary',
+                        }}
+                      >
+                        {op.example}
+                      </Typography>
+                    </Paper>
+                  </Grid>
                 ))}
-              </div>
-            </div>
+              </Grid>
+            </Paper>
           )}
 
           {/* Alias */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Alias (opcional)
-            </label>
-            <input
-              type="text"
-              value={alias}
-              onChange={e => setAlias(e.target.value)}
-              onKeyDown={e => {
-                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-                  handleSave();
-                }
-              }}
-              placeholder="nome_alias"
-              className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
+          <TextField
+            fullWidth
+            size="small"
+            label="Alias (opcional)"
+            value={alias}
+            onChange={e => setAlias(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                handleSave();
+              }
+            }}
+            placeholder="nome_alias"
+          />
 
           {/* Preview */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <Box>
+            <Typography variant="body2" fontWeight={500} sx={{ mb: 1 }}>
               Preview SQL
-            </label>
-            <div className="px-3 py-2 text-xs font-mono bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-700 dark:text-gray-300">
-              {expression}
-              {alias && ` AS ${alias}`}
-            </div>
-          </div>
-        </div>
+            </Typography>
+            <Paper
+              elevation={0}
+              sx={{
+                p: 1.5,
+                bgcolor: 'action.hover',
+                border: 1,
+                borderColor: 'divider',
+                borderRadius: 1,
+              }}
+            >
+              <Typography
+                variant="body2"
+                sx={{
+                  fontFamily: 'monospace',
+                  fontSize: '0.75rem',
+                  color: 'text.primary',
+                }}
+              >
+                {expression}
+                {alias && ` AS ${alias}`}
+              </Typography>
+            </Paper>
+          </Box>
+        </Box>
+      </DialogContent>
 
-        {/* Footer */}
-        <div className="flex items-center justify-end gap-2 p-4 border-t border-gray-200 dark:border-gray-700">
-          <button
-            onClick={onCancel}
-            className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-          >
-            Cancelar
-          </button>
-          <button
-            onClick={handleSave}
-            className="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
-          >
-            <Check className="h-4 w-4" />
-            Salvar
-          </button>
-        </div>
-      </div>
-    </div>
+      <DialogActions sx={{ px: 2, py: 1.5 }}>
+        <Button onClick={onCancel} size="small">
+          Cancelar
+        </Button>
+        <Button
+          onClick={handleSave}
+          variant="contained"
+          size="small"
+          startIcon={<CheckIcon />}
+        >
+          Salvar
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 }
-

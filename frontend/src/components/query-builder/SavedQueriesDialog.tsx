@@ -3,7 +3,32 @@
  */
 
 import { useState } from 'react';
-import { X, Save, Trash2, Copy, Check, Play, FolderOpen, Plus } from 'lucide-react';
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  IconButton,
+  Button,
+  TextField,
+  Box,
+  Typography,
+  Paper,
+  Tooltip,
+  Chip,
+  Divider,
+  useTheme,
+  alpha,
+} from '@mui/material';
+import {
+  Close as CloseIcon,
+  Save as SaveIcon,
+  Delete as DeleteIcon,
+  ContentCopy as CopyIcon,
+  Check as CheckIcon,
+  PlayArrow as PlayIcon,
+  FolderOpen as FolderOpenIcon,
+  Add as AddIcon,
+} from '@mui/icons-material';
 import type { QueryAST } from '../../types/query-builder';
 
 interface SavedQuery {
@@ -39,12 +64,11 @@ export default function SavedQueriesDialog({
   onDelete,
   onUpdate,
 }: SavedQueriesDialogProps) {
+  const theme = useTheme();
   const [showSaveForm, setShowSaveForm] = useState(false);
   const [saveName, setSaveName] = useState('');
   const [saveDescription, setSaveDescription] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
-
-  if (!isOpen) return null;
 
   const handleSave = () => {
     if (!saveName.trim()) return;
@@ -71,163 +95,247 @@ export default function SavedQueriesDialog({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      
-      {/* Dialog */}
-      <div className="relative w-full max-w-3xl max-h-[85vh] bg-white dark:bg-gray-900 rounded-xl shadow-2xl flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-          <div className="flex items-center gap-2">
-            <FolderOpen className="h-5 w-5 text-gray-500" />
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Queries Salvas
-            </h2>
-            <span className="text-sm text-gray-500">({savedQueries.length})</span>
-          </div>
-          <div className="flex items-center gap-2">
-            {currentSQL && (
-              <button
-                onClick={() => setShowSaveForm(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium
-                         text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+    <Dialog
+      open={isOpen}
+      onClose={onClose}
+      maxWidth="md"
+      fullWidth
+      PaperProps={{
+        sx: {
+          maxHeight: '85vh',
+        },
+      }}
+    >
+      <DialogTitle
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          pb: 1.5,
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <FolderOpenIcon sx={{ color: 'text.secondary', fontSize: 20 }} />
+          <Typography variant="h6" component="span">
+            Queries Salvas
+          </Typography>
+          <Chip label={savedQueries.length} size="small" />
+        </Box>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          {currentSQL && (
+            <Button
+              onClick={() => setShowSaveForm(true)}
+              variant="contained"
+              size="small"
+              startIcon={<AddIcon />}
+              sx={{ fontSize: '0.8125rem' }}
+            >
+              Salvar Query Atual
+            </Button>
+          )}
+          <IconButton
+            onClick={onClose}
+            size="small"
+            sx={{
+              color: 'text.secondary',
+              '&:hover': {
+                bgcolor: 'action.hover',
+              },
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </Box>
+      </DialogTitle>
+
+      {/* Save Form */}
+      {showSaveForm && (
+        <Box
+          sx={{
+            px: 2,
+            py: 1.5,
+            bgcolor: alpha(theme.palette.primary.main, 0.04),
+            borderBottom: 1,
+            borderColor: 'divider',
+          }}
+        >
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+            <TextField
+              fullWidth
+              size="small"
+              label="Nome da Query"
+              required
+              value={saveName}
+              onChange={(e) => setSaveName(e.target.value)}
+              placeholder="Ex: Clientes ativos com pedidos"
+              autoFocus
+            />
+            <TextField
+              fullWidth
+              size="small"
+              label="Descrição (opcional)"
+              value={saveDescription}
+              onChange={(e) => setSaveDescription(e.target.value)}
+              placeholder="Descreva o propósito desta query..."
+              multiline
+              rows={2}
+            />
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+              <Button
+                onClick={() => setShowSaveForm(false)}
+                size="small"
+                sx={{ fontSize: '0.8125rem' }}
               >
-                <Plus className="h-4 w-4" />
-                Salvar Query Atual
-              </button>
-            )}
-            <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
-              <X className="h-5 w-5 text-gray-500" />
-            </button>
-          </div>
-        </div>
-        
-        {/* Save Form */}
-        {showSaveForm && (
-          <div className="px-4 py-3 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-200 dark:border-blue-800">
-            <div className="space-y-3">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Nome da Query *
-                </label>
-                <input
-                  type="text"
-                  value={saveName}
-                  onChange={(e) => setSaveName(e.target.value)}
-                  placeholder="Ex: Clientes ativos com pedidos"
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
-                           bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100
-                           focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  autoFocus
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Descrição (opcional)
-                </label>
-                <textarea
-                  value={saveDescription}
-                  onChange={(e) => setSaveDescription(e.target.value)}
-                  placeholder="Descreva o propósito desta query..."
-                  rows={2}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
-                           bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100
-                           focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                />
-              </div>
-              <div className="flex justify-end gap-2">
-                <button
-                  onClick={() => setShowSaveForm(false)}
-                  className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 
-                           hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleSave}
+                disabled={!saveName.trim()}
+                variant="contained"
+                size="small"
+                startIcon={<SaveIcon />}
+                sx={{ fontSize: '0.8125rem' }}
+              >
+                Salvar
+              </Button>
+            </Box>
+          </Box>
+        </Box>
+      )}
+
+      <DialogContent dividers sx={{ overflow: 'auto', p: 2 }}>
+        {savedQueries.length === 0 ? (
+          <Box
+            sx={{
+              textAlign: 'center',
+              py: 6,
+              color: 'text.secondary',
+            }}
+          >
+            <FolderOpenIcon
+              sx={{
+                fontSize: 48,
+                mb: 2,
+                opacity: 0.5,
+                color: 'text.secondary',
+              }}
+            />
+            <Typography variant="body1" sx={{ mb: 1 }}>
+              Nenhuma query salva
+            </Typography>
+            <Typography variant="body2">
+              Salve suas queries frequentes para reutilizá-las depois
+            </Typography>
+          </Box>
+        ) : (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+            {savedQueries.map((query) => (
+              <Paper
+                key={query.id}
+                elevation={0}
+                sx={{
+                  border: 1,
+                  borderColor: 'divider',
+                  borderRadius: 1,
+                  overflow: 'hidden',
+                }}
+              >
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    px: 1.5,
+                    py: 1,
+                    bgcolor: 'action.hover',
+                  }}
                 >
-                  Cancelar
-                </button>
-                <button
-                  onClick={handleSave}
-                  disabled={!saveName.trim()}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium
-                           text-white bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400
-                           rounded-lg transition-colors"
-                >
-                  <Save className="h-4 w-4" />
-                  Salvar
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-        
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-4">
-          {savedQueries.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">
-              <FolderOpen className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p className="mb-2">Nenhuma query salva</p>
-              <p className="text-sm">Salve suas queries frequentes para reutilizá-las depois</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {savedQueries.map((query) => (
-                <div
-                  key={query.id}
-                  className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden"
-                >
-                  <div className="flex items-center justify-between px-3 py-2 bg-gray-50 dark:bg-gray-800">
-                    <div>
-                      <h3 className="font-medium text-gray-900 dark:text-white">
-                        {query.name}
-                      </h3>
-                      {query.description && (
-                        <p className="text-xs text-gray-500 mt-0.5">{query.description}</p>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <span className="text-xs text-gray-400 mr-2">
-                        {formatDate(query.updatedAt)}
-                      </span>
-                      <button
+                  <Box>
+                    <Typography variant="subtitle2" fontWeight={500}>
+                      {query.name}
+                    </Typography>
+                    {query.description && (
+                      <Typography variant="caption" color="text.secondary" sx={{ mt: 0.25, display: 'block' }}>
+                        {query.description}
+                      </Typography>
+                    )}
+                  </Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ mr: 1 }}>
+                      {formatDate(query.updatedAt)}
+                    </Typography>
+                    <Tooltip title="Copiar SQL">
+                      <IconButton
                         onClick={() => handleCopy(query.sql, query.id)}
-                        className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 
-                                 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
-                        title="Copiar SQL"
+                        size="small"
+                        sx={{
+                          color: 'text.secondary',
+                          '&:hover': {
+                            color: copiedId === query.id ? 'success.main' : 'text.primary',
+                            bgcolor: 'action.hover',
+                          },
+                        }}
                       >
                         {copiedId === query.id ? (
-                          <Check className="h-4 w-4 text-green-500" />
+                          <CheckIcon sx={{ fontSize: 16, color: 'success.main' }} />
                         ) : (
-                          <Copy className="h-4 w-4" />
+                          <CopyIcon sx={{ fontSize: 16 }} />
                         )}
-                      </button>
-                      <button
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Carregar query">
+                      <IconButton
                         onClick={() => onLoad(query.ast)}
-                        className="p-1.5 text-blue-500 hover:text-blue-600 
-                                 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
-                        title="Carregar query"
+                        size="small"
+                        sx={{
+                          color: 'primary.main',
+                          '&:hover': {
+                            bgcolor: alpha(theme.palette.primary.main, 0.08),
+                          },
+                        }}
                       >
-                        <Play className="h-4 w-4" />
-                      </button>
-                      <button
+                        <PlayIcon sx={{ fontSize: 16 }} />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Remover">
+                      <IconButton
                         onClick={() => onDelete(query.id)}
-                        className="p-1.5 text-gray-400 hover:text-red-500 
-                                 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
-                        title="Remover"
+                        size="small"
+                        sx={{
+                          color: 'text.secondary',
+                          '&:hover': {
+                            color: 'error.main',
+                            bgcolor: alpha(theme.palette.error.main, 0.08),
+                          },
+                        }}
                       >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-                  <pre className="p-3 text-xs font-mono text-gray-700 dark:text-gray-300 
-                                overflow-x-auto whitespace-pre-wrap max-h-32">
-                    {query.sql}
-                  </pre>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
+                        <DeleteIcon sx={{ fontSize: 16 }} />
+                      </IconButton>
+                    </Tooltip>
+                  </Box>
+                </Box>
+                <Box
+                  component="pre"
+                  sx={{
+                    p: 1.5,
+                    fontSize: '0.75rem',
+                    fontFamily: 'monospace',
+                    color: 'text.primary',
+                    overflowX: 'auto',
+                    whiteSpace: 'pre-wrap',
+                    maxHeight: 128,
+                    overflowY: 'auto',
+                    m: 0,
+                    bgcolor: 'background.paper',
+                  }}
+                >
+                  {query.sql}
+                </Box>
+              </Paper>
+            ))}
+          </Box>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
-

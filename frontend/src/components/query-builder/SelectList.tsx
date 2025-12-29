@@ -4,7 +4,25 @@
  */
 
 import { useState } from 'react';
-import { Trash2, Edit2, Check, X, GripVertical } from 'lucide-react';
+import {
+  Box,
+  Paper,
+  Typography,
+  IconButton,
+  TextField,
+  Tooltip,
+  useTheme,
+  alpha,
+} from '@mui/material';
+import {
+  Delete as DeleteIcon,
+  Edit as EditIcon,
+  Check as CheckIcon,
+  Close as CloseIcon,
+  DragIndicator as DragIndicatorIcon,
+  CheckBox as CheckBoxIcon,
+  Link as LinkIcon,
+} from '@mui/icons-material';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -26,6 +44,7 @@ interface SortableItemProps {
 }
 
 function SortableItem({ field, tableAlias, onRemove, onEditAlias }: SortableItemProps) {
+  const theme = useTheme();
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(field.alias || '');
   
@@ -63,97 +82,202 @@ function SortableItem({ field, tableAlias, onRemove, onEditAlias }: SortableItem
   };
 
   return (
-    <div
+    <Paper
       ref={setNodeRef}
       style={style}
-      className={`
-        flex items-center gap-2 px-3 py-2 bg-white dark:bg-gray-800 
-        border border-gray-200 dark:border-gray-700 rounded-lg
-        ${isDragging ? 'shadow-lg' : 'shadow-sm'}
-        group transition-shadow
-      `}
+      elevation={isDragging ? 4 : 1}
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 1,
+        px: 1.5,
+        py: 1,
+        border: 1,
+        borderColor: 'divider',
+        borderRadius: 1,
+        transition: 'box-shadow 0.2s',
+        '&:hover .action-buttons': {
+          opacity: 1,
+        },
+      }}
     >
+      {/* Checkbox */}
+      <CheckBoxIcon
+        sx={{
+          fontSize: 16,
+          color: 'success.main',
+          flexShrink: 0,
+        }}
+      />
+      
       {/* Drag handle */}
-      <button
+      <IconButton
         {...attributes}
         {...listeners}
-        className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+        size="small"
+        sx={{
+          cursor: 'grab',
+          '&:active': {
+            cursor: 'grabbing',
+          },
+          color: 'text.secondary',
+          p: 0.5,
+        }}
       >
-        <GripVertical className="h-4 w-4" />
-      </button>
+        <DragIndicatorIcon sx={{ fontSize: 16 }} />
+      </IconButton>
 
       {/* Conteúdo */}
-      <div className="flex-1 min-w-0">
+      <Box sx={{ flex: 1, minWidth: 0 }}>
         {field.expression ? (
           // Expressão customizada
-          <div className="font-mono text-sm text-gray-900 dark:text-gray-100 truncate">
+          <Typography
+            variant="body2"
+            sx={{
+              fontFamily: 'monospace',
+              fontSize: '0.8125rem',
+              noWrap: true,
+            }}
+          >
             {field.expression}
             {field.alias && (
-              <span className="text-blue-600 dark:text-blue-400"> AS {field.alias}</span>
+              <Box component="span" sx={{ color: 'primary.main' }}>
+                {' AS '}
+                {field.alias}
+              </Box>
             )}
-          </div>
+          </Typography>
         ) : (
           // Coluna normal
-          <div className="font-mono text-sm text-gray-900 dark:text-gray-100 truncate">
-            <span className="text-gray-500">{tableAlias}.</span>
+          <Typography
+            variant="body2"
+            sx={{
+              fontFamily: 'monospace',
+              fontSize: '0.8125rem',
+              noWrap: true,
+            }}
+          >
+            <Box component="span" sx={{ color: 'text.secondary' }}>
+              {tableAlias}.
+            </Box>
             {field.column}
             {field.alias && (
-              <span className="text-blue-600 dark:text-blue-400"> AS {field.alias}</span>
+              <Box component="span" sx={{ color: 'primary.main' }}>
+                {' AS '}
+                {field.alias}
+              </Box>
             )}
-          </div>
+          </Typography>
         )}
-      </div>
+      </Box>
 
       {/* Botões de ação */}
-      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+      <Box
+        className="action-buttons"
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 0.5,
+          opacity: 0,
+          transition: 'opacity 0.2s',
+        }}
+      >
         {isEditing ? (
           <>
-            <input
-              type="text"
+            <TextField
+              size="small"
               value={editValue}
               onChange={(e) => setEditValue(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Alias"
-              className="w-24 px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded
-                       bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
-                       focus:outline-none focus:ring-1 focus:ring-blue-500"
               autoFocus
+              sx={{
+                width: 96,
+                '& .MuiInputBase-root': {
+                  fontSize: '0.75rem',
+                  height: 28,
+                },
+              }}
             />
-            <button
-              onClick={handleSave}
-              className="p-1 text-green-600 hover:text-green-700"
-              title="Salvar"
-            >
-              <Check className="h-3.5 w-3.5" />
-            </button>
-            <button
-              onClick={handleCancel}
-              className="p-1 text-gray-400 hover:text-gray-600"
-              title="Cancelar"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
+            <Tooltip title="Salvar">
+              <IconButton
+                onClick={handleSave}
+                size="small"
+                sx={{
+                  color: 'success.main',
+                  p: 0.5,
+                }}
+              >
+                <CheckIcon sx={{ fontSize: 14 }} />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Cancelar">
+              <IconButton
+                onClick={handleCancel}
+                size="small"
+                sx={{
+                  color: 'text.secondary',
+                  p: 0.5,
+                }}
+              >
+                <CloseIcon sx={{ fontSize: 14 }} />
+              </IconButton>
+            </Tooltip>
           </>
         ) : (
           <>
-            <button
-              onClick={() => setIsEditing(true)}
-              className="p-1 text-gray-400 hover:text-blue-600"
-              title="Editar alias"
-            >
-              <Edit2 className="h-3.5 w-3.5" />
-            </button>
-            <button
-              onClick={onRemove}
-              className="p-1 text-gray-400 hover:text-red-600"
-              title="Remover"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </button>
+            <Tooltip title="Ver relacionamentos">
+              <IconButton
+                onClick={() => {
+                  // TODO: Mostrar relacionamentos da coluna
+                  alert('Funcionalidade de relacionamentos em desenvolvimento');
+                }}
+                size="small"
+                sx={{
+                  color: 'text.secondary',
+                  p: 0.5,
+                  '&:hover': {
+                    color: 'primary.main',
+                  },
+                }}
+              >
+                <LinkIcon sx={{ fontSize: 14 }} />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Editar alias">
+              <IconButton
+                onClick={() => setIsEditing(true)}
+                size="small"
+                sx={{
+                  color: 'text.secondary',
+                  p: 0.5,
+                  '&:hover': {
+                    color: 'primary.main',
+                  },
+                }}
+              >
+                <EditIcon sx={{ fontSize: 14 }} />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Remover">
+              <IconButton
+                onClick={onRemove}
+                size="small"
+                sx={{
+                  color: 'text.secondary',
+                  p: 0.5,
+                  '&:hover': {
+                    color: 'error.main',
+                  },
+                }}
+              >
+                <DeleteIcon sx={{ fontSize: 14 }} />
+              </IconButton>
+            </Tooltip>
           </>
         )}
-      </div>
-    </div>
+      </Box>
+    </Paper>
   );
 }
 
@@ -191,30 +315,75 @@ export default function SelectList({
 
   if (fields.length === 0) {
     return (
-      <div className="h-full flex flex-col bg-white dark:bg-gray-900">
-        <div className="p-3 border-b border-gray-200 dark:border-gray-700">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+      <Box
+        sx={{
+          height: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          bgcolor: 'background.paper',
+        }}
+      >
+        <Box
+          sx={{
+            p: 1.5,
+            borderBottom: 1,
+            borderColor: 'divider',
+          }}
+        >
+          <Typography variant="subtitle2" fontWeight={600}>
             SELECT (0)
-          </h3>
-        </div>
-        <div className="flex-1 flex items-center justify-center p-8 text-center">
-          <div className="text-gray-500 dark:text-gray-400">
-            <p className="text-sm font-medium mb-2">Nenhuma coluna selecionada</p>
-            <p className="text-xs">Arraste colunas do catálogo de tabelas para cá</p>
-          </div>
-        </div>
-      </div>
+          </Typography>
+        </Box>
+        <Box
+          sx={{
+            flex: 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            p: 4,
+            textAlign: 'center',
+          }}
+        >
+          <Box sx={{ color: 'text.secondary' }}>
+            <Typography variant="body2" fontWeight={500} sx={{ mb: 1 }}>
+              Nenhuma coluna selecionada
+            </Typography>
+            <Typography variant="caption">
+              Arraste colunas do catálogo de tabelas para cá
+            </Typography>
+          </Box>
+        </Box>
+      </Box>
     );
   }
 
   return (
-    <div className="h-full flex flex-col bg-white dark:bg-gray-900">
-      <div className="p-3 border-b border-gray-200 dark:border-gray-700">
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+    <Box
+      sx={{
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        bgcolor: 'background.paper',
+      }}
+    >
+      <Box
+        sx={{
+          p: 1.5,
+          borderBottom: 1,
+          borderColor: 'divider',
+        }}
+      >
+        <Typography variant="subtitle2" fontWeight={600}>
           SELECT ({fields.length})
-        </h3>
-      </div>
-      <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar">
+        </Typography>
+      </Box>
+      <Box
+        sx={{
+          flex: 1,
+          overflow: 'auto',
+          p: 1.5,
+        }}
+      >
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
@@ -224,18 +393,20 @@ export default function SelectList({
             items={sortedFields.map(f => f.id)}
             strategy={verticalListSortingStrategy}
           >
-            {sortedFields.map(field => (
-              <SortableItem
-                key={field.id}
-                field={field}
-                tableAlias={getTableAlias(field.tableId)}
-                onRemove={() => onRemove(field.id)}
-                onEditAlias={(alias) => onEditAlias(field.id, alias)}
-              />
-            ))}
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              {sortedFields.map(field => (
+                <SortableItem
+                  key={field.id}
+                  field={field}
+                  tableAlias={getTableAlias(field.tableId)}
+                  onRemove={() => onRemove(field.id)}
+                  onEditAlias={(alias) => onEditAlias(field.id, alias)}
+                />
+              ))}
+            </Box>
           </SortableContext>
         </DndContext>
-      </div>
-    </div>
+      </Box>
+    </Box>
   );
 }

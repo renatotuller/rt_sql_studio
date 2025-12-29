@@ -13,7 +13,24 @@ import ReactFlow, {
   useReactFlow,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-import { Download, ZoomIn, ZoomOut, Maximize2, RotateCcw } from 'lucide-react';
+import {
+  Box,
+  IconButton,
+  Paper,
+  Tooltip,
+  Typography,
+  Divider,
+  Button,
+  useTheme,
+  alpha,
+} from '@mui/material';
+import {
+  Download as DownloadIcon,
+  ZoomIn as ZoomInIcon,
+  ZoomOut as ZoomOutIcon,
+  Fullscreen as Maximize2Icon,
+  RotateLeft as RotateCcwIcon,
+} from '@mui/icons-material';
 import { schemaApi, connectionsApi, type GraphNode, type GraphEdge } from '../api/client';
 import PageLayout from '../components/PageLayout';
 import InformativeLoading from '../components/InformativeLoading';
@@ -270,48 +287,63 @@ export default function SchemaViewer() {
       backUrl="/connections"
       currentView="standard"
       actions={
-        <>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           {/* Controles de Zoom */}
-          <div className="flex items-center gap-2 bg-white dark:bg-gray-800 rounded-lg shadow-md p-2 border border-gray-200 dark:border-gray-700">
-            <button
-              onClick={handleZoomIn}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
-              title="Zoom In"
-            >
-              <ZoomIn className="h-4 w-4 text-gray-700 dark:text-gray-300" />
-            </button>
-            <button
-              onClick={handleZoomOut}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
-              title="Zoom Out"
-            >
-              <ZoomOut className="h-4 w-4 text-gray-700 dark:text-gray-300" />
-            </button>
-            <div className="border-l border-gray-200 dark:border-gray-700 h-6 mx-1"></div>
-            <button
-              onClick={handleFitView}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
-              title="Ajustar à Tela"
-            >
-              <Maximize2 className="h-4 w-4 text-gray-700 dark:text-gray-300" />
-            </button>
-            <button
-              onClick={handleResetView}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
-              title="Resetar Visualização"
-            >
-              <RotateCcw className="h-4 w-4 text-gray-700 dark:text-gray-300" />
-            </button>
-            <div className="border-l border-gray-200 dark:border-gray-700 h-6 mx-1"></div>
-            <div className="px-2 py-1 text-xs text-gray-600 dark:text-gray-400 font-medium min-w-[45px] text-center">
+          <Paper
+            elevation={2}
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+              p: 1,
+              border: 1,
+              borderColor: 'divider',
+            }}
+          >
+            <Tooltip title="Zoom In">
+              <IconButton onClick={handleZoomIn} size="small">
+                <ZoomInIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Zoom Out">
+              <IconButton onClick={handleZoomOut} size="small">
+                <ZoomOutIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
+            <Tooltip title="Ajustar à Tela">
+              <IconButton onClick={handleFitView} size="small">
+                <Maximize2Icon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Resetar Visualização">
+              <IconButton onClick={handleResetView} size="small">
+                <RotateCcwIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
+            <Typography variant="caption" sx={{ px: 1, minWidth: 45, textAlign: 'center', fontWeight: 500 }}>
               {Math.round(zoomLevel * 100)}%
-            </div>
-          </div>
-          <button onClick={handleDownloadDDL} className="btn btn-primary flex items-center gap-1 text-xs px-1.5 py-0.5">
-            <Download className="h-3 w-3" />
+            </Typography>
+          </Paper>
+          <Button
+            onClick={handleDownloadDDL}
+            variant="contained"
+            size="small"
+            startIcon={<DownloadIcon fontSize="small" />}
+            sx={{
+              px: 1.5,
+              py: 0.25,
+              minHeight: 'auto',
+              fontSize: '0.6875rem',
+              fontWeight: 500,
+              textTransform: 'none',
+              borderRadius: 1.5,
+            }}
+          >
             Baixar DDL
-          </button>
-        </>
+          </Button>
+        </Box>
       }
       fullscreen
     >

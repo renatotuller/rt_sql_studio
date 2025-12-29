@@ -3,7 +3,28 @@
  */
 
 import { useState } from 'react';
-import { X, Clock, Trash2, Copy, Check, Play } from 'lucide-react';
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  IconButton,
+  Button,
+  Box,
+  Typography,
+  Paper,
+  Tooltip,
+  Chip,
+  useTheme,
+  alpha,
+} from '@mui/material';
+import {
+  Close as CloseIcon,
+  Delete as DeleteIcon,
+  ContentCopy as CopyIcon,
+  Check as CheckIcon,
+  PlayArrow as PlayIcon,
+  AccessTime as AccessTimeIcon,
+} from '@mui/icons-material';
 import type { QueryAST } from '../../types/query-builder';
 
 interface QueryHistoryItem {
@@ -31,9 +52,8 @@ export default function QueryHistoryDialog({
   onDelete,
   onClearAll,
 }: QueryHistoryDialogProps) {
+  const theme = useTheme();
   const [copiedId, setCopiedId] = useState<string | null>(null);
-
-  if (!isOpen) return null;
 
   const handleCopy = async (sql: string, id: string) => {
     await navigator.clipboard.writeText(sql);
@@ -62,97 +82,179 @@ export default function QueryHistoryDialog({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      
-      {/* Dialog */}
-      <div className="relative w-full max-w-2xl max-h-[80vh] bg-white dark:bg-gray-900 rounded-xl shadow-2xl flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-          <div className="flex items-center gap-2">
-            <Clock className="h-5 w-5 text-gray-500" />
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Histórico de Queries
-            </h2>
-            <span className="text-sm text-gray-500">({history.length})</span>
-          </div>
-          <div className="flex items-center gap-2">
-            {history.length > 0 && (
-              <button
-                onClick={onClearAll}
-                className="px-3 py-1.5 text-sm text-red-600 hover:text-red-700 
-                         hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+    <Dialog
+      open={isOpen}
+      onClose={onClose}
+      maxWidth="sm"
+      fullWidth
+      PaperProps={{
+        sx: {
+          maxHeight: '80vh',
+        },
+      }}
+    >
+      <DialogTitle
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          pb: 1.5,
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <AccessTimeIcon sx={{ color: 'text.secondary', fontSize: 20 }} />
+          <Typography variant="h6" component="span">
+            Histórico de Queries
+          </Typography>
+          <Chip label={history.length} size="small" />
+        </Box>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          {history.length > 0 && (
+            <Button
+              onClick={onClearAll}
+              size="small"
+              sx={{
+                color: 'error.main',
+                fontSize: '0.8125rem',
+                '&:hover': {
+                  bgcolor: alpha(theme.palette.error.main, 0.08),
+                },
+              }}
+            >
+              Limpar tudo
+            </Button>
+          )}
+          <IconButton
+            onClick={onClose}
+            size="small"
+            sx={{
+              color: 'text.secondary',
+              '&:hover': {
+                bgcolor: 'action.hover',
+              },
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </Box>
+      </DialogTitle>
+
+      <DialogContent dividers sx={{ overflow: 'auto', p: 2 }}>
+        {history.length === 0 ? (
+          <Box
+            sx={{
+              textAlign: 'center',
+              py: 6,
+              color: 'text.secondary',
+            }}
+          >
+            <AccessTimeIcon
+              sx={{
+                fontSize: 48,
+                mb: 2,
+                opacity: 0.5,
+                color: 'text.secondary',
+              }}
+            />
+            <Typography variant="body1">Nenhuma query no histórico</Typography>
+          </Box>
+        ) : (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+            {history.map((item) => (
+              <Paper
+                key={item.id}
+                elevation={0}
+                sx={{
+                  border: 1,
+                  borderColor: 'divider',
+                  borderRadius: 1,
+                  overflow: 'hidden',
+                }}
               >
-                Limpar tudo
-              </button>
-            )}
-            <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
-              <X className="h-5 w-5 text-gray-500" />
-            </button>
-          </div>
-        </div>
-        
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-4">
-          {history.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">
-              <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>Nenhuma query no histórico</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {history.map((item) => (
-                <div
-                  key={item.id}
-                  className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden"
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    px: 1.5,
+                    py: 1,
+                    bgcolor: 'action.hover',
+                  }}
                 >
-                  <div className="flex items-center justify-between px-3 py-2 bg-gray-50 dark:bg-gray-800">
-                    <span className="text-xs text-gray-500">
-                      {formatDate(item.timestamp)}
-                    </span>
-                    <div className="flex items-center gap-1">
-                      <button
+                  <Typography variant="caption" color="text.secondary">
+                    {formatDate(item.timestamp)}
+                  </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    <Tooltip title="Copiar SQL">
+                      <IconButton
                         onClick={() => handleCopy(item.sql, item.id)}
-                        className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 
-                                 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
-                        title="Copiar SQL"
+                        size="small"
+                        sx={{
+                          color: 'text.secondary',
+                          '&:hover': {
+                            color: copiedId === item.id ? 'success.main' : 'text.primary',
+                            bgcolor: 'action.hover',
+                          },
+                        }}
                       >
                         {copiedId === item.id ? (
-                          <Check className="h-4 w-4 text-green-500" />
+                          <CheckIcon sx={{ fontSize: 16, color: 'success.main' }} />
                         ) : (
-                          <Copy className="h-4 w-4" />
+                          <CopyIcon sx={{ fontSize: 16 }} />
                         )}
-                      </button>
-                      <button
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Carregar query">
+                      <IconButton
                         onClick={() => onLoad(item.ast)}
-                        className="p-1.5 text-blue-500 hover:text-blue-600 
-                                 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
-                        title="Carregar query"
+                        size="small"
+                        sx={{
+                          color: 'primary.main',
+                          '&:hover': {
+                            bgcolor: alpha(theme.palette.primary.main, 0.08),
+                          },
+                        }}
                       >
-                        <Play className="h-4 w-4" />
-                      </button>
-                      <button
+                        <PlayIcon sx={{ fontSize: 16 }} />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Remover">
+                      <IconButton
                         onClick={() => onDelete(item.id)}
-                        className="p-1.5 text-gray-400 hover:text-red-500 
-                                 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
-                        title="Remover"
+                        size="small"
+                        sx={{
+                          color: 'text.secondary',
+                          '&:hover': {
+                            color: 'error.main',
+                            bgcolor: alpha(theme.palette.error.main, 0.08),
+                          },
+                        }}
                       >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-                  <pre className="p-3 text-xs font-mono text-gray-700 dark:text-gray-300 
-                                overflow-x-auto whitespace-pre-wrap">
-                    {item.sql}
-                  </pre>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
+                        <DeleteIcon sx={{ fontSize: 16 }} />
+                      </IconButton>
+                    </Tooltip>
+                  </Box>
+                </Box>
+                <Box
+                  component="pre"
+                  sx={{
+                    p: 1.5,
+                    fontSize: '0.75rem',
+                    fontFamily: 'monospace',
+                    color: 'text.primary',
+                    overflowX: 'auto',
+                    whiteSpace: 'pre-wrap',
+                    m: 0,
+                    bgcolor: 'background.paper',
+                  }}
+                >
+                  {item.sql}
+                </Box>
+              </Paper>
+            ))}
+          </Box>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
-
