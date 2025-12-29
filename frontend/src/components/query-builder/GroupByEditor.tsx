@@ -14,6 +14,7 @@ import {
   FormControl,
   Paper,
   Tooltip,
+  TextField,
   useTheme,
   alpha,
 } from '@mui/material';
@@ -53,6 +54,7 @@ interface GroupByEditorProps {
   nodes: GraphNode[];
   availableFields: SelectField[]; // Campos disponíveis do SELECT
   tableAliases: Map<string, string>; // Mapeamento tableId -> alias
+  onAddAggregate?: (tableId: string, column: string, aggregateFunction: 'COUNT' | 'SUM' | 'AVG' | 'MIN' | 'MAX', alias?: string) => void; // Callback para adicionar agregação
 }
 
 function GroupByItem({
@@ -166,11 +168,14 @@ export default function GroupByEditor({
   nodes,
   availableFields,
   tableAliases,
+  onAddAggregate,
 }: GroupByEditorProps) {
   const theme = useTheme();
   const [isAdding, setIsAdding] = useState(false);
   const [selectedTableId, setSelectedTableId] = useState<string>('');
   const [selectedColumn, setSelectedColumn] = useState<string>('');
+  const [selectedAggregate, setSelectedAggregate] = useState<'COUNT' | 'SUM' | 'AVG' | 'MIN' | 'MAX' | ''>('');
+  const [aggregateAlias, setAggregateAlias] = useState<string>('');
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -214,15 +219,25 @@ export default function GroupByEditor({
       f => f.tableId === selectedTableId && f.column === selectedColumn
     );
 
+    // Adicionar ao GROUP BY
     onAdd({
       tableId: selectedTableId,
       column: selectedColumn,
       alias: selectField?.alias,
     });
 
+    // Se uma função de agregação foi selecionada, adicionar também ao SELECT
+    if (selectedAggregate && onAddAggregate) {
+      const alias = aggregateAlias.trim() || undefined;
+      // Sempre usar a coluna selecionada para a agregação
+      onAddAggregate(selectedTableId, selectedColumn, selectedAggregate, alias);
+    }
+
     setIsAdding(false);
     setSelectedTableId('');
     setSelectedColumn('');
+    setSelectedAggregate('');
+    setAggregateAlias('');
   };
 
   // Obter tabelas disponíveis (das que têm campos no SELECT)
@@ -300,49 +315,91 @@ export default function GroupByEditor({
             }}
           >
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <FormControl size="small" sx={{ flex: 1 }}>
-                  <Select
-                    value={selectedTableId}
-                    onChange={e => {
-                      setSelectedTableId(e.target.value);
-                      setSelectedColumn('');
-                    }}
-                    sx={{ fontSize: '0.75rem', height: 32 }}
-                  >
-                    <MenuItem value="" sx={{ fontSize: '0.75rem' }}>Selecione a tabela</MenuItem>
-                    {availableTables.map(tableId => {
-                      const table = nodes.find(n => n.id === tableId);
-                      const alias = tableAliases.get(tableId) || tableId;
-                      return (
-                        <MenuItem key={tableId} value={tableId} sx={{ fontSize: '0.75rem' }}>
-                          {table?.label || tableId} ({alias})
-                        </MenuItem>
-                      );
-                    })}
-                  </Select>
-                </FormControl>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <FormControl size="small" sx={{ flex: 1 }}>
+                    <Select
+                      value={selectedTableId}
+                      onChange={e => {
+                        setSelectedTableId(e.target.value);
+                        setSelectedColumn('');
+                      }}
+                      sx={{ fontSize: '0.75rem', height: 32 }}
+                    >
+                      <MenuItem value="" sx={{ fontSize: '0.75rem' }}>Selecione a tabela</MenuItem>
+                      {availableTables.map(tableId => {
+                        const table = nodes.find(n => n.id === tableId);
+                        const alias = tableAliases.get(tableId) || tableId;
+                        return (
+                          <MenuItem key={tableId} value={tableId} sx={{ fontSize: '0.75rem' }}>
+                            {table?.label || tableId} ({alias})
+                          </MenuItem>
+                        );
+                      })}
+                    </Select>
+                  </FormControl>
 
-                <FormControl size="small" sx={{ flex: 1 }} disabled={!selectedTableId}>
-                  <Select
-                    value={selectedColumn}
-                    onChange={e => setSelectedColumn(e.target.value)}
-                    sx={{ fontSize: '0.75rem', height: 32 }}
-                  >
-                    <MenuItem value="" sx={{ fontSize: '0.75rem' }}>Selecione a coluna</MenuItem>
-                    {availableColumns.map(col => {
-                      const selectField = availableFields.find(
-                        f => f.tableId === selectedTableId && f.column === col.name
-                      );
-                      return (
-                        <MenuItem key={col.name} value={col.name} sx={{ fontSize: '0.75rem' }}>
-                          {col.name}
-                          {selectField?.alias && ` (AS ${selectField.alias})`}
-                        </MenuItem>
-                      );
-                    })}
-                  </Select>
-                </FormControl>
+                  <FormControl size="small" sx={{ flex: 1 }} disabled={!selectedTableId}>
+                    <Select
+                      value={selectedColumn}
+                      onChange={e => setSelectedColumn(e.target.value)}
+                      sx={{ fontSize: '0.75rem', height: 32 }}
+                    >
+                      <MenuItem value="" sx={{ fontSize: '0.75rem' }}>Selecione a coluna</MenuItem>
+                      {availableColumns.map(col => {
+                        const selectField = availableFields.find(
+                          f => f.tableId === selectedTableId && f.column === col.name
+                        );
+                        return (
+                          <MenuItem key={col.name} value={col.name} sx={{ fontSize: '0.75rem' }}>
+                            {col.name}
+                            {selectField?.alias && ` (AS ${selectField.alias})`}
+                          </MenuItem>
+                        );
+                      })}
+                    </Select>
+                  </FormControl>
+                </Box>
+
+                {/* Seletor de função de agregação */}
+                {onAddAggregate && (
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary' }}>
+                      Função de Agregação (opcional)
+                    </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <FormControl size="small" sx={{ flex: 1 }}>
+                        <Select
+                          value={selectedAggregate}
+                          onChange={e => setSelectedAggregate(e.target.value as typeof selectedAggregate)}
+                          sx={{ fontSize: '0.75rem', height: 32 }}
+                          displayEmpty
+                        >
+                          <MenuItem value="" sx={{ fontSize: '0.75rem' }}>Sem agregação</MenuItem>
+                          <MenuItem value="COUNT" sx={{ fontSize: '0.75rem' }}>COUNT - Contar</MenuItem>
+                          <MenuItem value="SUM" sx={{ fontSize: '0.75rem' }}>SUM - Somar</MenuItem>
+                          <MenuItem value="AVG" sx={{ fontSize: '0.75rem' }}>AVG - Média</MenuItem>
+                          <MenuItem value="MIN" sx={{ fontSize: '0.75rem' }}>MIN - Mínimo</MenuItem>
+                          <MenuItem value="MAX" sx={{ fontSize: '0.75rem' }}>MAX - Máximo</MenuItem>
+                        </Select>
+                      </FormControl>
+                      {selectedAggregate && (
+                        <TextField
+                          size="small"
+                          placeholder="Alias (opcional)"
+                          value={aggregateAlias}
+                          onChange={e => setAggregateAlias(e.target.value)}
+                          sx={{ flex: 1, fontSize: '0.75rem', '& .MuiInputBase-input': { fontSize: '0.75rem', height: 32, py: 0.5 } }}
+                        />
+                      )}
+                    </Box>
+                    {selectedAggregate && (
+                      <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.65rem' }}>
+                        A função {selectedAggregate} será adicionada ao SELECT automaticamente
+                      </Typography>
+                    )}
+                  </Box>
+                )}
               </Box>
 
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -361,6 +418,8 @@ export default function GroupByEditor({
                     setIsAdding(false);
                     setSelectedTableId('');
                     setSelectedColumn('');
+                    setSelectedAggregate('');
+                    setAggregateAlias('');
                   }}
                   size="small"
                   sx={{ fontSize: '0.75rem', minHeight: 'auto' }}

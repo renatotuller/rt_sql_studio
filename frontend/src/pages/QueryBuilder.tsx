@@ -122,8 +122,7 @@ export default function QueryBuilder() {
   const [editingSubqueryFieldId, setEditingSubqueryFieldId] = useState<string | null>(null);
   const [aggregateDialogOpen, setAggregateDialogOpen] = useState(false);
   const [aggregateFunction, setAggregateFunction] = useState<'COUNT' | 'SUM' | 'AVG' | 'MIN' | 'MAX'>('COUNT');
-  const [aggregateTableId, setAggregateTableId] = useState<string>('');
-  const [aggregateColumn, setAggregateColumn] = useState<string>('');
+  const [aggregateFieldId, setAggregateFieldId] = useState<string>(''); // ID do campo do SELECT
   const [aggregateAlias, setAggregateAlias] = useState<string>('');
   const [importSQL, setImportSQL] = useState('');
   const exportMenuRef = useRef<HTMLDivElement>(null);
@@ -1350,28 +1349,6 @@ export default function QueryBuilder() {
               Campos SELECT ({ast.select.fields.length})
             </Typography>
             <Box sx={{ display: 'flex', gap: 0.5 }}>
-              <Button
-                onClick={() => {
-                  setCustomFieldDialogOpen(true);
-                  setCustomExpression('');
-                  setCustomAlias('');
-                }}
-                size="small"
-                sx={{
-                  px: 1,
-                  py: 0.25,
-                  minHeight: 28, // Mesma altura do TextField de busca
-                  fontSize: '0.75rem',
-                  fontWeight: 500,
-                  textTransform: 'none',
-                  color: 'primary.main',
-                  '&:hover': {
-                    bgcolor: alpha(theme.palette.primary.main, 0.12),
-                  },
-                }}
-              >
-                + Personalizada
-              </Button>
               <Box sx={{ position: 'relative' }} ref={advancedMenuRef}>
                 <Button
                   onClick={() => setAdvancedMenuOpen(!advancedMenuOpen)}
@@ -1407,6 +1384,29 @@ export default function QueryBuilder() {
                 >
                   <MenuItem
                     onClick={() => {
+                      setAggregateDialogOpen(true);
+                      setAggregateFunction('COUNT');
+                      setAggregateFieldId('');
+                      setAggregateAlias('');
+                      setAdvancedMenuOpen(false);
+                    }}
+                  >
+                    <LayersIcon sx={{ fontSize: 16, mr: 1, color: 'warning.main' }} />
+                    Agregação
+                  </MenuItem>
+                  <MenuItem
+                    onClick={() => {
+                      setCustomFieldDialogOpen(true);
+                      setCustomExpression('');
+                      setCustomAlias('');
+                      setAdvancedMenuOpen(false);
+                    }}
+                  >
+                    <CodeIcon sx={{ fontSize: 16, mr: 1, color: 'primary.main' }} />
+                    Personalizada
+                  </MenuItem>
+                  <MenuItem
+                    onClick={() => {
                       setEditingSubqueryFieldId(null);
                       setSubqueryDialogOpen(true);
                       setAdvancedMenuOpen(false);
@@ -1414,19 +1414,6 @@ export default function QueryBuilder() {
                   >
                     <CodeIcon sx={{ fontSize: 16, mr: 1, color: 'secondary.main' }} />
                     Subselect
-                  </MenuItem>
-                  <MenuItem
-                    onClick={() => {
-                      setAggregateDialogOpen(true);
-                      setAggregateFunction('COUNT');
-                      setAggregateTableId('');
-                      setAggregateColumn('');
-                      setAggregateAlias('');
-                      setAdvancedMenuOpen(false);
-                    }}
-                  >
-                    <LayersIcon sx={{ fontSize: 16, mr: 1, color: 'warning.main' }} />
-                    Agregação
                   </MenuItem>
                 </Menu>
               </Box>
@@ -1826,12 +1813,14 @@ export default function QueryBuilder() {
       >
         <GroupByEditor
           fields={ast.groupBy?.fields || []}
-          onAdd={addGroupBy}
+          onAdd={(field) => addGroupBy(field.tableId, field.column)}
+          onUpdate={() => {}} // GroupBy não precisa de update individual
           onRemove={removeGroupBy}
           onReorder={reorderGroupBy}
           nodes={nodes}
-          availableTables={includedTables}
+          availableFields={ast.select.fields}
           tableAliases={tableAliases}
+          onAddAggregate={addAggregate}
         />
       </QueryClauseDialog>
       
@@ -1842,12 +1831,12 @@ export default function QueryBuilder() {
       >
         <OrderByEditor
           fields={ast.orderBy?.fields || []}
-          onAdd={addOrderBy}
+          onAdd={(field) => addOrderBy(field.tableId, field.column, field.direction)}
           onRemove={removeOrderBy}
           onUpdate={updateOrderBy}
           onReorder={reorderOrderBy}
           nodes={nodes}
-          availableTables={includedTables}
+          availableFields={ast.select.fields}
           tableAliases={tableAliases}
         />
       </QueryClauseDialog>
@@ -2086,8 +2075,7 @@ export default function QueryBuilder() {
         onClose={() => {
           setAggregateDialogOpen(false);
           setAggregateFunction('COUNT');
-          setAggregateTableId('');
-          setAggregateColumn('');
+          setAggregateFieldId('');
           setAggregateAlias('');
         }}
         maxWidth="sm"
@@ -2100,8 +2088,7 @@ export default function QueryBuilder() {
               onClick={() => {
                 setAggregateDialogOpen(false);
                 setAggregateFunction('COUNT');
-                setAggregateTableId('');
-                setAggregateColumn('');
+                setAggregateFieldId('');
                 setAggregateAlias('');
               }}
               size="small"
@@ -2128,53 +2115,65 @@ export default function QueryBuilder() {
               </Select>
             </FormControl>
             
-            <FormControl fullWidth>
-              <InputLabel>Tabela</InputLabel>
-              <Select
-                value={aggregateTableId}
-                onChange={(e) => {
-                  setAggregateTableId(e.target.value);
-                  setAggregateColumn(''); // Limpar coluna ao mudar tabela
-                }}
-                label="Tabela"
-              >
-                <MenuItem value="">Selecione uma tabela...</MenuItem>
-                {Array.from(includedTables).map(tableId => {
-                  const node = nodes.find(n => n.id === tableId);
-                  return (
-                    <MenuItem key={tableId} value={tableId}>
-                      {node?.label || tableId}
-                    </MenuItem>
-                  );
-                })}
-              </Select>
-            </FormControl>
-            
-            <FormControl fullWidth disabled={!aggregateTableId || aggregateFunction === 'COUNT'}>
-              <InputLabel>Coluna</InputLabel>
-              <Select
-                value={aggregateColumn}
-                onChange={(e) => setAggregateColumn(e.target.value)}
-                label="Coluna"
-              >
-                <MenuItem value="">
-                  {aggregateFunction === 'COUNT' ? 'COUNT(*) - Contar todas as linhas' : 'Selecione uma coluna...'}
-                </MenuItem>
-                {aggregateTableId && aggregateFunction !== 'COUNT' && (() => {
-                  const node = nodes.find(n => n.id === aggregateTableId);
-                  return node?.columns?.map(col => (
-                    <MenuItem key={col.name} value={col.name}>
-                      {col.name} ({col.type})
-                    </MenuItem>
-                  ));
-                })()}
-              </Select>
-              {aggregateFunction === 'COUNT' && (
-                <Typography variant="caption" sx={{ mt: 0.5, color: 'text.secondary' }}>
-                  COUNT(*) conta todas as linhas, independente da coluna
+            {ast.select.fields.length === 0 ? (
+              <Alert severity="warning">
+                <Typography variant="body2">
+                  Adicione pelo menos uma coluna no SELECT antes de criar funções de agregação.
                 </Typography>
-              )}
-            </FormControl>
+              </Alert>
+            ) : (
+              <FormControl fullWidth>
+                <InputLabel>Coluna do SELECT</InputLabel>
+                <Select
+                  value={aggregateFieldId}
+                  onChange={(e) => setAggregateFieldId(e.target.value)}
+                  label="Coluna do SELECT"
+                >
+                  <MenuItem value="">
+                    {aggregateFunction === 'COUNT' ? 'COUNT(*) - Contar todas as linhas' : 'Selecione uma coluna...'}
+                  </MenuItem>
+                  {ast.select.fields
+                    .filter(field => {
+                      // Excluir campos que já são agregados, subselects ou expressões
+                      if (field.type === 'aggregate' || field.type === 'subquery' || field.expression) return false;
+                      // Apenas campos normais (colunas de tabelas)
+                      if (!field.tableId || !field.column) return false;
+                      
+                      // Para COUNT, permitir todas as colunas
+                      if (aggregateFunction === 'COUNT') return true;
+                      
+                      // Para outras funções, apenas colunas numéricas
+                      const node = nodes.find(n => n.id === field.tableId);
+                      const column = node?.columns?.find(c => c.name === field.column);
+                      if (!column) return false;
+                      const numericTypes = ['int', 'bigint', 'decimal', 'numeric', 'float', 'double', 'money', 'smallmoney', 'tinyint', 'smallint', 'real'];
+                      return numericTypes.some(type => column.type.toLowerCase().includes(type));
+                    })
+                    .map(field => {
+                      const node = nodes.find(n => n.id === field.tableId);
+                      const tableAlias = tableAliases.get(field.tableId) || field.tableId;
+                      const displayName = field.alias 
+                        ? field.alias 
+                        : `${tableAlias}.${field.column}`;
+                      return (
+                        <MenuItem key={field.id} value={field.id}>
+                          {displayName} {field.column && `(${field.column})`}
+                        </MenuItem>
+                      );
+                    })}
+                </Select>
+                {aggregateFunction === 'COUNT' && (
+                  <Typography variant="caption" sx={{ mt: 0.5, color: 'text.secondary' }}>
+                    Selecione uma coluna ou deixe vazio para COUNT(*) que conta todas as linhas
+                  </Typography>
+                )}
+                {aggregateFunction !== 'COUNT' && (
+                  <Typography variant="caption" sx={{ mt: 0.5, color: 'text.secondary' }}>
+                    Apenas colunas numéricas do SELECT podem ser usadas com {aggregateFunction}
+                  </Typography>
+                )}
+              </FormControl>
+            )}
             
             <TextField
               label="Alias (opcional)"
@@ -2208,25 +2207,28 @@ export default function QueryBuilder() {
           </Button>
           <Button
             onClick={() => {
-              if (aggregateTableId) {
-                // Para COUNT, usar '*' como coluna se não especificada
-                const column = aggregateFunction === 'COUNT' ? '*' : aggregateColumn;
-                if (column) {
+              // Para COUNT, pode ser COUNT(*) (sem campo) ou COUNT(coluna)
+              if (aggregateFunction === 'COUNT' && !aggregateFieldId) {
+                // COUNT(*) - não precisa de campo específico
+                addAggregate('', '*', aggregateFunction, aggregateAlias.trim() || undefined);
+              } else if (aggregateFieldId) {
+                // Agregar uma coluna específica do SELECT
+                const field = ast.select.fields.find(f => f.id === aggregateFieldId);
+                if (field) {
                   addAggregate(
-                    aggregateTableId,
-                    column,
+                    field.tableId,
+                    field.column || '*',
                     aggregateFunction,
                     aggregateAlias.trim() || undefined
                   );
-                  setAggregateDialogOpen(false);
-                  setAggregateFunction('COUNT');
-                  setAggregateTableId('');
-                  setAggregateColumn('');
-                  setAggregateAlias('');
                 }
               }
+              setAggregateDialogOpen(false);
+              setAggregateFunction('COUNT');
+              setAggregateFieldId('');
+              setAggregateAlias('');
             }}
-            disabled={!aggregateTableId || (aggregateFunction !== 'COUNT' && !aggregateColumn)}
+            disabled={ast.select.fields.length === 0 || (aggregateFunction !== 'COUNT' && !aggregateFieldId)}
             variant="contained"
             size="small"
           >
