@@ -13,7 +13,7 @@ import {
   alpha,
   Chip,
 } from '@mui/material';
-import Grid2 from '@mui/material/Grid2';
+import Grid from '@mui/material/Grid';
 import {
   Storage as DatabaseIcon,
   TableChart as TableIcon,
@@ -177,9 +177,9 @@ export default function Dashboard() {
       </Box>
 
       {/* Cards de Estatísticas Gerais */}
-      <Grid2 container spacing={2} sx={{ mb: 3 }}>
+      <Grid container spacing={2} sx={{ mb: 3 }}>
         {statCards.map((stat, index) => (
-          <Grid2 xs={12} sm={6} md={3} key={index}>
+          <Grid item xs={12} sm={6} md={3} key={index}>
             <Card
               sx={{
                 background: `linear-gradient(135deg, ${stat.bgColor} 0%, ${alpha(stat.bgColor, 0.5)} 100%)`,
@@ -211,9 +211,9 @@ export default function Dashboard() {
                 </Box>
               </CardContent>
             </Card>
-          </Grid2>
+          </Grid>
         ))}
-      </Grid2>
+      </Grid>
 
       {/* Cards de Conexões */}
       {connections.length === 0 ? (
@@ -236,9 +236,9 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       ) : (
-        <Grid2 container spacing={2}>
+        <Grid container spacing={2}>
           {connections.map((conn) => (
-            <Grid2 xs={12} sm={6} md={4} key={conn.id}>
+            <Grid item xs={12} sm={6} md={4} key={conn.id}>
               <Card
                 sx={{
                   height: '100%',
@@ -293,8 +293,8 @@ export default function Dashboard() {
                   {/* Estatísticas */}
                   {conn.stats ? (
                     <Box sx={{ mb: 2 }}>
-                      <Grid2 container spacing={1.5} sx={{ mb: 1.5 }}>
-                        <Grid2 xs={6}>
+                      <Grid container spacing={1.5} sx={{ mb: 1.5 }}>
+                        <Grid item xs={6}>
                           <Paper
                             variant="outlined"
                             sx={{
@@ -313,8 +313,8 @@ export default function Dashboard() {
                               {conn.stats.tables}
                             </Typography>
                           </Paper>
-                        </Grid2>
-                        <Grid2 xs={6}>
+                        </Grid>
+                        <Grid item xs={6}>
                           <Paper
                             variant="outlined"
                             sx={{
@@ -333,8 +333,8 @@ export default function Dashboard() {
                               {conn.stats.views}
                             </Typography>
                           </Paper>
-                        </Grid2>
-                      </Grid2>
+                        </Grid>
+                      </Grid>
                       
                       <Paper
                         variant="outlined"
@@ -424,9 +424,9 @@ export default function Dashboard() {
                   </Box>
                 </CardContent>
                 </Card>
-              </Grid2>
+              </Grid>
             ))}
-          </Grid2>
+          </Grid>
       )}
     </PageLayout>
   );

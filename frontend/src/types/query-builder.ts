@@ -3,24 +3,31 @@
  * Define a estrutura do AST (Abstract Syntax Tree) e interfaces relacionadas
  */
 
-import { GraphNode, GraphEdge } from './index';
+import type { GraphNode, GraphEdge } from '../api/client';
 
 export type JoinType = 'INNER' | 'LEFT' | 'RIGHT' | 'FULL';
+export type WhereOperator = '=' | '!=' | '<>' | '>' | '>=' | '<' | '<=' | 'LIKE' | 'NOT LIKE' | 'IN' | 'NOT IN' | 'IS NULL' | 'IS NOT NULL' | 'BETWEEN' | 'NOT BETWEEN' | 'EXISTS' | 'NOT EXISTS';
+export type WhereLogicalOperator = 'AND' | 'OR';
+export type OrderDirection = 'ASC' | 'DESC';
+
+// ===== AST STRUCTURES =====
 
 export interface QueryAST {
   from: FromClause;
   select: SelectClause;
-  joins: JoinClause[];
+  joins: QueryJoin[];
   where?: WhereClause;
   groupBy?: GroupByClause;
   orderBy?: OrderByClause;
   limit?: LimitClause;
+  ctes?: CTEClause[];
 }
 
 export interface FromClause {
-  table: string;              // ID da tabela (ex: "dbo.Users")
-  alias?: string;              // Alias opcional (ex: "u")
-  schema?: string;             // Schema (ex: "dbo")
+  table: string;
+  alias: string;
+  schema?: string;
+  subquery?: QueryAST;
 }
 
 export interface SelectClause {
@@ -28,53 +35,69 @@ export interface SelectClause {
 }
 
 export interface SelectField {
-  id: string;                  // ID único do campo
-  table: string;               // ID da tabela
-  column: string;              // Nome da coluna
-  alias?: string;              // Alias (AS)
-  order: number;               // Ordem na lista (para reordenar)
+  id: string;
+  tableId: string;
+  column: string;
+  alias?: string;
+  order: number;
+  expression?: string;
+  type?: 'column' | 'expression' | 'subquery' | 'aggregate';
+  aggregateFunction?: 'COUNT' | 'SUM' | 'AVG' | 'MIN' | 'MAX';
+  subquery?: QueryAST;
 }
 
-export interface JoinClause {
-  id: string;                  // ID único do JOIN
-  type: JoinType;              // INNER, LEFT, RIGHT, FULL
-  targetTable: string;         // ID da tabela alvo
-  targetAlias?: string;        // Alias da tabela alvo
-  condition: JoinCondition;     // Condição ON
-  relationshipId?: string;      // ID do relacionamento usado (opcional)
-  path?: string[];             // Caminho no grafo (ex: ["A", "B", "C"])
-}
-
-export interface JoinCondition {
-  leftTable: string;           // ID da tabela esquerda
-  leftColumn: string;          // Coluna esquerda
-  rightTable: string;          // ID da tabela direita
-  rightColumn: string;         // Coluna direita
-  operator?: string;           // "=" (padrão), "!=", ">", etc.
+export interface QueryJoin {
+  id: string;
+  type: JoinType;
+  sourceTableId: string;
+  sourceAlias: string;
+  sourceColumn: string;
+  targetTableId: string;
+  targetAlias: string;
+  targetColumn: string;
+  customCondition?: string;
+  edgeId?: string;
+  targetSubquery?: QueryAST;
+  targetSubqueryAlias?: string;
 }
 
 export interface WhereClause {
   conditions: WhereCondition[];
-  operator?: 'AND' | 'OR';
+  logicalOperator?: WhereLogicalOperator;
 }
 
 export interface WhereCondition {
-  table: string;
+  id: string;
+  tableId: string;
   column: string;
-  operator: string;            // "=", ">", "<", "LIKE", etc.
-  value: any;
+  operator: WhereOperator;
+  value?: string | number | string[] | number[];
+  logicalOperator?: WhereLogicalOperator;
+  order: number;
+  subquery?: QueryAST;
 }
 
 export interface GroupByClause {
-  fields: Array<{ table: string; column: string }>;
+  fields: GroupByField[];
+}
+
+export interface GroupByField {
+  id: string;
+  tableId: string;
+  column: string;
+  order: number;
 }
 
 export interface OrderByClause {
-  fields: Array<{
-    table: string;
-    column: string;
-    direction: 'ASC' | 'DESC';
-  }>;
+  fields: OrderByField[];
+}
+
+export interface OrderByField {
+  id: string;
+  tableId: string;
+  column: string;
+  direction: OrderDirection;
+  order: number;
 }
 
 export interface LimitClause {
@@ -82,32 +105,44 @@ export interface LimitClause {
   offset?: number;
 }
 
-// Resultado da busca de caminho no grafo
-export interface PathResult {
-  path: string[];              // ["A", "B", "C"]
-  edges: GraphEdge[];          // Arestas usadas no caminho
-  distance: number;            // Número de hops
+export interface CTEClause {
+  id: string;
+  name: string;
+  query: QueryAST;
+  columns?: string[];
+  recursive?: boolean;
 }
 
-// Estado do Query Builder
-export interface QueryBuilderState {
-  ast: QueryAST;
-  graph: { nodes: GraphNode[]; edges: GraphEdge[] };
-  selectedBaseTable: string | null;
-  expandedTables: Set<string>;
-  selectedColumns: Map<string, SelectField>;
-  joins: Map<string, JoinClause>;
-  errors: ValidationError[];
+// ===== JOIN PATH =====
+
+export interface JoinPath {
+  edges: Array<{
+    from: string;
+    to: string;
+    fromColumn: string;
+    toColumn: string;
+    edgeId: string;
+  }>;
+  intermediateTables: string[];
+  length: number;
 }
 
-// Erros de validação
+export interface JoinOption {
+  path: JoinPath;
+  description: string;
+  directRelationships: number;
+}
+
+// ===== VALIDATION =====
+
 export interface ValidationError {
   type: 'missing_table' | 'duplicate_column' | 'invalid_join' | 'circular_join' | 'missing_join';
   message: string;
   field?: string;
 }
 
-// Props para componentes
+// ===== COMPONENT PROPS (legacy compatibility) =====
+
 export interface TableExplorerProps {
   nodes: GraphNode[];
   expandedTables: Set<string>;
@@ -122,12 +157,38 @@ export interface SelectListProps {
   onReorder: (fields: SelectField[]) => void;
   onRemove: (fieldId: string) => void;
   onEditAlias: (fieldId: string, alias: string) => void;
-  onDrop: (tableId: string, column: string) => void;
+  tableAliases: Map<string, string>;
+}
+
+// Legacy types for backwards compatibility
+export interface JoinClause extends QueryJoin {}
+export interface JoinCondition {
+  leftTable: string;
+  leftColumn: string;
+  rightTable: string;
+  rightColumn: string;
+  operator?: string;
+}
+
+export interface PathResult {
+  path: string[];
+  edges: GraphEdge[];
+  distance: number;
+}
+
+export interface QueryBuilderState {
+  ast: QueryAST;
+  graph: { nodes: GraphNode[]; edges: GraphEdge[] };
+  selectedBaseTable: string | null;
+  expandedTables: Set<string>;
+  selectedColumns: Map<string, SelectField>;
+  joins: Map<string, QueryJoin>;
+  errors: ValidationError[];
 }
 
 export interface JoinEditorProps {
-  joins: JoinClause[];
-  onEdit: (joinId: string, updates: Partial<JoinClause>) => void;
+  joins: QueryJoin[];
+  onEdit: (joinId: string, updates: Partial<QueryJoin>) => void;
   onRemove: (joinId: string) => void;
   graph: { nodes: GraphNode[]; edges: GraphEdge[] };
 }
@@ -149,4 +210,3 @@ export interface SQLPreviewProps {
   onSave: () => void;
   onLoad: (ast: QueryAST) => void;
 }
-
