@@ -29,10 +29,12 @@ import {
   VpnKey as VpnKeyIcon,
   Link as LinkIcon,
 } from '@mui/icons-material';
-import type { GraphNode, Column } from '../../api/client';
+import type { GraphNode, Column, GraphEdge } from '../../api/client';
+import { findTablesWithRelationships } from '../../utils/query-builder/graph-path-finder';
 
 interface TableExplorerProps {
   nodes: GraphNode[];
+  edges?: GraphEdge[];
   expandedTables: Set<string>;
   onToggleExpand: (tableId: string) => void;
   onColumnDragStart: (tableId: string, column: Column) => void;
@@ -44,6 +46,7 @@ interface TableExplorerProps {
 
 export default function TableExplorer({
   nodes,
+  edges = [],
   expandedTables,
   onToggleExpand,
   onColumnDragStart,
@@ -53,6 +56,16 @@ export default function TableExplorer({
   baseTableId,
 }: TableExplorerProps) {
   const theme = useTheme();
+  
+  // Calcular tabelas relacionadas
+  const relatedTableIds = useMemo(() => {
+    if (!edges || edges.length === 0 || includedTables.size === 0) {
+      return new Set<string>();
+    }
+    
+    const relatedTables = findTablesWithRelationships(nodes, edges, includedTables);
+    return new Set(relatedTables.map(t => t.tableId));
+  }, [nodes, edges, includedTables]);
   
   // Filtrar e ordenar nós
   const filteredNodes = useMemo(() => {
@@ -159,6 +172,7 @@ export default function TableExplorer({
             {filteredNodes.map(node => {
               const isExpanded = expandedTables.has(node.id);
               const isIncluded = includedTables.has(node.id) || node.id === baseTableId;
+              const isRelated = relatedTableIds.has(node.id) && !isIncluded;
               const isView = node.type === 'view';
 
               return (
@@ -217,15 +231,56 @@ export default function TableExplorer({
                         },
                       }}
                     />
-                    <Chip
-                      label={node.columns?.length || 0}
-                      size="small"
-                      sx={{
-                        height: 18,
-                        fontSize: '0.6875rem',
-                        minWidth: 24,
-                      }}
-                    />
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'nowrap' }}>
+                      {/* Badge INCLUÍDA */}
+                      {isIncluded && (
+                        <Chip
+                          label="INCLUÍDA"
+                          size="small"
+                          sx={{
+                            height: 18,
+                            fontSize: '0.625rem',
+                            fontWeight: 600,
+                            bgcolor: theme.palette.mode === 'dark' 
+                              ? theme.palette.success.dark 
+                              : theme.palette.success.light,
+                            color: theme.palette.mode === 'dark'
+                              ? theme.palette.success.contrastText
+                              : theme.palette.success.dark,
+                            minWidth: 60,
+                          }}
+                        />
+                      )}
+                      {/* Badge RELACIONADA */}
+                      {isRelated && (
+                        <Chip
+                          label="RELACIONADA"
+                          size="small"
+                          sx={{
+                            height: 18,
+                            fontSize: '0.625rem',
+                            fontWeight: 600,
+                            bgcolor: theme.palette.mode === 'dark'
+                              ? alpha(theme.palette.warning.main, 0.3)
+                              : alpha(theme.palette.warning.main, 0.15),
+                            color: theme.palette.mode === 'dark'
+                              ? theme.palette.warning.light
+                              : theme.palette.warning.dark,
+                            minWidth: 70,
+                          }}
+                        />
+                      )}
+                      {/* Badge com quantidade de colunas */}
+                      <Chip
+                        label={node.columns?.length || 0}
+                        size="small"
+                        sx={{
+                          height: 18,
+                          fontSize: '0.6875rem',
+                          minWidth: 24,
+                        }}
+                      />
+                    </Box>
                   </ListItemButton>
 
                   {/* Lista de colunas (quando expandido) */}

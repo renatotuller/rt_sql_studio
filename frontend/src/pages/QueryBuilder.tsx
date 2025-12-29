@@ -115,22 +115,23 @@ export default function QueryBuilder() {
   const [savedQueriesDialogOpen, setSavedQueriesDialogOpen] = useState(false);
   const [importSQLDialogOpen, setImportSQLDialogOpen] = useState(false);
   const [importSQL, setImportSQL] = useState('');
+  const [autoExecuteOnDrop, setAutoExecuteOnDrop] = useState(false);
+  const autoExecuteCounterRef = useRef(0);
+  const isProcessingDropRef = useRef(false);
+  const lastFieldsCountRef = useRef(0);
+  const lastSQLRef = useRef('');
   const exportMenuRef = useRef<HTMLDivElement>(null);
   
   // Pending column para adicionar após JOIN ser criado
   const pendingViewColumnRef = useRef<{ tableId: string; column: Column } | null>(null);
+  const pendingColumnRef = useRef<{ tableId: string; column: string } | null>(null);
+  const [pendingJoinTableId, setPendingJoinTableId] = useState<string | null>(null);
   
-  // Callback quando JOIN é criado
-  const handleJoinCreated = useCallback((targetTableId: string) => {
-    if (pendingViewColumnRef.current) {
-      const { tableId, column } = pendingViewColumnRef.current;
-      if (tableId === targetTableId) {
-        setTimeout(() => {
-          // A coluna será adicionada pelo hook
-        }, 0);
-      }
-      pendingViewColumnRef.current = null;
-    }
+  // Callback quando não encontra relacionamento
+  const handleMissingJoin = useCallback((targetTableId: string, sourceTableId: string) => {
+    setPendingJoinTableId(targetTableId);
+    // Abrir o dialog de JOINs automaticamente
+    setActiveDialog('joins');
   }, []);
   
   // Hook do Query Builder
@@ -138,7 +139,7 @@ export default function QueryBuilder() {
     nodes,
     edges,
     dbType,
-    onJoinCreated: handleJoinCreated,
+    onMissingJoin: handleMissingJoin,
   });
   
   const {
@@ -172,6 +173,31 @@ export default function QueryBuilder() {
     reset,
     loadAST,
   } = queryBuilder;
+  
+  // Callback quando JOIN é criado (definido após addColumn estar disponível)
+  const handleJoinCreated = useCallback((targetTableId: string) => {
+    if (pendingViewColumnRef.current) {
+      const { tableId, column } = pendingViewColumnRef.current;
+      if (tableId === targetTableId) {
+        setTimeout(() => {
+          // A coluna será adicionada pelo hook
+        }, 0);
+      }
+      pendingViewColumnRef.current = null;
+    }
+    // Adicionar coluna pendente quando JOIN é criado
+    if (pendingColumnRef.current && pendingColumnRef.current.tableId === targetTableId) {
+      const { tableId, column } = pendingColumnRef.current;
+      setTimeout(() => {
+        addColumn(tableId, column);
+        pendingColumnRef.current = null;
+      }, 100);
+    }
+    // Limpar tabela pendente quando JOIN é criado
+    if (pendingJoinTableId === targetTableId) {
+      setPendingJoinTableId(null);
+    }
+  }, [pendingJoinTableId, addColumn]);
 
   // Estado para queries salvas
   const [savedQueries, setSavedQueries] = useState<Array<{
@@ -302,14 +328,142 @@ export default function QueryBuilder() {
   };
   
   const handleColumnDrop = (tableId: string, columnName: string) => {
+    // Proteção contra múltiplas chamadas simultâneas
+    if (isProcessingDropRef.current) {
+      console.log('Drop já está sendo processado, ignorando...');
+      return;
+    }
+    
+    isProcessingDropRef.current = true;
+    
     // Se não há tabela base, definir esta como base
     if (!ast.from.table) {
       setBaseTable(tableId);
+      // Se acabou de definir a tabela base, adicionar a coluna diretamente
+      setTimeout(() => {
+        addColumn(tableId, columnName);
+        // Incrementar contador para forçar nova execução
+        autoExecuteCounterRef.current += 1;
+        // Aguardar mais tempo para garantir que o SQL foi gerado pelo useMemo
+        setTimeout(() => {
+          // Verificar novamente se o SQL foi gerado antes de setar a flag
+          if (sql && sql.trim().length > 0) {
+            setAutoExecuteOnDrop(true);
+          }
+          isProcessingDropRef.current = false;
+        }, 300);
+      }, 100);
+      return;
     }
     
-    // Adicionar coluna
+    // Armazenar coluna pendente caso precise de JOIN manual
+    pendingColumnRef.current = { tableId, column: columnName };
+    
+    // Verificar se a coluna já existe antes de adicionar
+    const columnExists = ast.select.fields.some(f => f.tableId === tableId && f.column === columnName);
+    
+    // Adicionar coluna (pode retornar sem adicionar se precisar de JOIN manual)
     addColumn(tableId, columnName);
+    
+    // Marcar para executar automaticamente após o SQL ser gerado (se coluna foi adicionada)
+    // Usar um delay maior para garantir que o SQL foi atualizado
+    setTimeout(() => {
+      const wasAdded = ast.select.fields.some(f => f.tableId === tableId && f.column === columnName);
+      if (wasAdded && !columnExists) {
+        // Incrementar contador para forçar nova execução
+        autoExecuteCounterRef.current += 1;
+        // Aguardar mais tempo para garantir que o SQL foi gerado pelo useMemo
+        setTimeout(() => {
+          setAutoExecuteOnDrop(true);
+          isProcessingDropRef.current = false;
+        }, 300);
+      } else {
+        isProcessingDropRef.current = false;
+      }
+    }, 150);
   };
+
+  // Executar automaticamente quando SQL for gerado após um drop
+  useEffect(() => {
+    if (autoExecuteOnDrop && sql && sql.trim().length > 0 && connId && !executing && ast.select.fields.length > 0) {
+      const currentCounter = autoExecuteCounterRef.current;
+      const currentSQL = sql; // Capturar SQL atual
+      
+      console.log('🔄 [Auto-exec] Disparando execução automática...', {
+        counter: currentCounter,
+        sqlLength: currentSQL.length,
+        fieldsCount: ast.select.fields.length,
+      });
+      
+      // Resetar flag imediatamente para permitir próximas execuções
+      setAutoExecuteOnDrop(false);
+      
+      // Pequeno delay para garantir que o SQL foi completamente gerado
+      const timer = setTimeout(async () => {
+        // Verificar se ainda é a mesma execução (evitar execuções duplicadas)
+        if (currentCounter !== autoExecuteCounterRef.current) {
+          console.log('⏭️ [Auto-exec] Execução cancelada - contador mudou');
+          return;
+        }
+        
+        // Verificar novamente as condições antes de executar
+        if (!currentSQL || !connId || executing) {
+          console.log('⏭️ [Auto-exec] Execução cancelada - condições não atendidas');
+          return;
+        }
+        
+        console.log('▶️ [Auto-exec] Executando query...');
+        setExecuting(true);
+        setExecutionError(null);
+        setExecutionResult(null);
+        setActiveTab('resultados');
+        
+        try {
+          const limit = resultLimit === -1 ? undefined : resultLimit;
+          const response = await queryApi.execute(connId, currentSQL, limit);
+          setExecutionResult(response.data);
+          console.log('✅ [Auto-exec] Query executada com sucesso');
+        } catch (err: any) {
+          console.error('❌ [Auto-exec] Erro ao executar query:', err);
+          setExecutionError(err.response?.data?.error || err.message || 'Erro ao executar query');
+        } finally {
+          setExecuting(false);
+        }
+      }, 400);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [autoExecuteOnDrop, sql, connId, executing, ast.select.fields.length, resultLimit]);
+  
+  // Monitorar mudanças no AST e SQL para detectar quando uma coluna foi adicionada
+  useEffect(() => {
+    const fieldsCount = ast.select.fields.length;
+    const currentSQL = sql;
+    
+    // Se uma nova coluna foi adicionada e o SQL mudou
+    if (fieldsCount > lastFieldsCountRef.current && currentSQL !== lastSQLRef.current && currentSQL.trim().length > 0) {
+      // Verificar se estamos processando um drop
+      if (isProcessingDropRef.current) {
+        console.log('🔍 [Auto-exec] Nova coluna detectada, aguardando flag...', {
+          fieldsCount,
+          lastCount: lastFieldsCountRef.current,
+          sqlLength: currentSQL.length,
+        });
+        
+        // Aguardar um pouco e verificar se a flag foi setada
+        setTimeout(() => {
+          if (!autoExecuteOnDrop && isProcessingDropRef.current) {
+            console.log('🚀 [Auto-exec] Flag não foi setada, setando agora...');
+            autoExecuteCounterRef.current += 1;
+            setAutoExecuteOnDrop(true);
+          }
+        }, 100);
+      }
+    }
+    
+    lastFieldsCountRef.current = fieldsCount;
+    lastSQLRef.current = currentSQL;
+  }, [ast.select.fields.length, sql, autoExecuteOnDrop]);
   
   const handleCopy = async () => {
     if (!sql) return;
@@ -711,54 +865,6 @@ export default function QueryBuilder() {
             >
               Salvas
             </Button>
-            <Box
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 1,
-                ml: 2,
-                pl: 2,
-                borderLeft: 1,
-                borderColor: 'divider',
-              }}
-            >
-              <Typography variant="caption" sx={{ color: 'text.secondary', whiteSpace: 'nowrap' }}>
-                Limite:
-              </Typography>
-              <TextField
-                type="number"
-                value={resultLimit === -1 ? '' : resultLimit}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  if (value === '') {
-                    setResultLimit(-1); // Todos
-                  } else {
-                    const num = parseInt(value, 10);
-                    if (!isNaN(num) && num > 0) {
-                      setResultLimit(Math.min(num, 10000)); // Máximo de 10000
-                    }
-                  }
-                }}
-                placeholder="100"
-                size="small"
-                inputProps={{
-                  min: 1,
-                  max: 10000,
-                  style: { textAlign: 'center', padding: '4px 8px' },
-                }}
-                sx={{
-                  width: 80,
-                  '& .MuiInputBase-root': {
-                    fontSize: '0.75rem',
-                    height: 28,
-                  },
-                  '& .MuiInputBase-input': {
-                    py: 0.5,
-                    textAlign: 'center',
-                  },
-                }}
-              />
-            </Box>
             <Button
               onClick={handleCopy}
               disabled={!sql}
@@ -957,6 +1063,7 @@ export default function QueryBuilder() {
         >
           <TableExplorer
             nodes={nodes}
+            edges={edges}
             expandedTables={expandedTables}
             onToggleExpand={handleToggleExpand}
             onColumnDragStart={handleColumnDragStart}
@@ -992,30 +1099,77 @@ export default function QueryBuilder() {
               alignItems: 'center',
             }}
           >
-            <Tabs
-              value={activeTab}
-              onChange={(_, newValue) => setActiveTab(newValue)}
-              sx={{
-                minHeight: 'auto',
-                height: '100%',
-                '& .MuiTab-root': {
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+              <Tabs
+                value={activeTab}
+                onChange={(_, newValue) => setActiveTab(newValue)}
+                sx={{
                   minHeight: 'auto',
-                  py: 0.5,
-                  px: 2,
-                  fontSize: '0.75rem',
-                  fontWeight: 500,
-                  textTransform: 'none',
-                  height: 28, // Mesma altura do TextField de busca
-                },
-                '& .MuiTabs-indicator': {
-                  height: 2,
-                },
-              }}
-            >
-              <Tab label="Resultados" value="resultados" />
-              <Tab label="Grafo" value="grafo" />
-              <Tab label="EXPLAIN" value="explain" />
-            </Tabs>
+                  height: '100%',
+                  '& .MuiTab-root': {
+                    minHeight: 'auto',
+                    py: 0.5,
+                    px: 2,
+                    fontSize: '0.75rem',
+                    fontWeight: 500,
+                    textTransform: 'none',
+                    height: 28, // Mesma altura do TextField de busca
+                  },
+                  '& .MuiTabs-indicator': {
+                    height: 2,
+                  },
+                }}
+              >
+                <Tab label="Resultados" value="resultados" />
+                <Tab label="Grafo" value="grafo" />
+                <Tab label="EXPLAIN" value="explain" />
+              </Tabs>
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1,
+                  pr: 1,
+                }}
+              >
+                <Typography variant="caption" sx={{ color: 'text.secondary', whiteSpace: 'nowrap' }}>
+                  Limite:
+                </Typography>
+                <TextField
+                  type="number"
+                  value={resultLimit === -1 ? '' : resultLimit}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === '') {
+                      setResultLimit(-1); // Todos
+                    } else {
+                      const num = parseInt(value, 10);
+                      if (!isNaN(num) && num > 0) {
+                        setResultLimit(Math.min(num, 10000)); // Máximo de 10000
+                      }
+                    }
+                  }}
+                  placeholder="100"
+                  size="small"
+                  inputProps={{
+                    min: 1,
+                    max: 10000,
+                    style: { textAlign: 'center', padding: '4px 8px' },
+                  }}
+                  sx={{
+                    width: 80,
+                    '& .MuiInputBase-root': {
+                      fontSize: '0.75rem',
+                      height: 28,
+                    },
+                    '& .MuiInputBase-input': {
+                      py: 0.5,
+                      textAlign: 'center',
+                    },
+                  }}
+                />
+              </Box>
+            </Box>
           </Box>
           
           {/* Tab Content */}
@@ -1301,6 +1455,7 @@ export default function QueryBuilder() {
             }}
             onDrop={(e) => {
               e.preventDefault();
+              e.stopPropagation(); // Prevenir propagação do evento
               setIsDraggingOver(false);
               try {
                 const data = JSON.parse(e.dataTransfer.getData('application/json'));
@@ -1600,7 +1755,14 @@ export default function QueryBuilder() {
       {/* Dialogs */}
       <QueryClauseDialog
         isOpen={activeDialog === 'joins'}
-        onClose={() => setActiveDialog('none')}
+        onClose={() => {
+          setActiveDialog('none');
+          // Limpar coluna pendente se dialog foi fechado sem criar JOIN
+          if (pendingJoinTableId && !ast.joins.some(j => j.targetTableId === pendingJoinTableId)) {
+            pendingColumnRef.current = null;
+            setPendingJoinTableId(null);
+          }
+        }}
         title="Gerenciar JOINs"
         width="xl"
       >
@@ -1608,12 +1770,19 @@ export default function QueryBuilder() {
           joins={ast.joins}
           onUpdate={updateJoin}
           onRemove={removeJoin}
-          onAddManual={addManualJoin}
+          onAddManual={(targetTableId, sourceTableId, conditions, joinType, targetSubquery, targetSubqueryAlias) => {
+            addManualJoin(targetTableId, sourceTableId, conditions, joinType, targetSubquery, targetSubqueryAlias);
+            // Chamar callback de JOIN criado após criar o JOIN
+            const finalTableId = targetSubquery && targetSubqueryAlias ? targetSubqueryAlias : targetTableId;
+            handleJoinCreated(finalTableId);
+          }}
           baseTableId={ast.from.table}
           baseTableAlias={ast.from.alias}
           nodes={nodes}
           edges={edges}
           dbType={dbType}
+          preselectedViewTableId={pendingJoinTableId}
+          onJoinCreated={handleJoinCreated}
         />
       </QueryClauseDialog>
       

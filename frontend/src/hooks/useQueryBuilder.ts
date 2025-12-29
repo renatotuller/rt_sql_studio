@@ -23,6 +23,7 @@ interface UseQueryBuilderOptions {
   edges: GraphEdge[];
   dbType: DatabaseDialect;
   onJoinCreated?: (targetTableId: string) => void;
+  onMissingJoin?: (targetTableId: string, sourceTableId: string) => void;
 }
 
 interface UseQueryBuilderReturn {
@@ -88,7 +89,7 @@ interface UseQueryBuilderReturn {
 }
 
 export function useQueryBuilder(options: UseQueryBuilderOptions): UseQueryBuilderReturn {
-  const { nodes, edges, dbType, onJoinCreated } = options;
+  const { nodes, edges, dbType, onJoinCreated, onMissingJoin } = options;
   
   const [ast, setAST] = useState<QueryAST>(createEmptyAST());
   
@@ -204,17 +205,49 @@ export function useQueryBuilder(options: UseQueryBuilderOptions): UseQueryBuilde
           if (!ast.joins.some(j => j.targetTableId === targetTableId)) {
             const targetAlias = getUniqueAlias(targetTableId);
             
-            const newJoin: QueryJoin = {
-              id: `join-${Date.now()}-${Math.random()}`,
-              type: 'LEFT',
-              sourceTableId: currentSourceId,
-              sourceAlias: currentSourceAlias,
-              sourceColumn: edge.fromColumn,
-              targetTableId,
-              targetAlias,
-              targetColumn: edge.toColumn,
-              edgeId: edge.edgeId,
-            };
+            // Verificar se há múltiplos relacionamentos diretos entre currentSourceId e targetTableId
+            const directRelationships = findAllDirectRelationships(edges, currentSourceId, targetTableId);
+            
+            let newJoin: QueryJoin;
+            
+            if (directRelationships.length > 1) {
+              // Múltiplos relacionamentos - usar todos com condições AND
+              const conditions: string[] = [];
+              let primaryEdgeId = directRelationships[0].id;
+              
+              directRelationships.forEach(rel => {
+                const isFromSource = rel.from === currentSourceId;
+                const sourceCol = isFromSource ? rel.fromColumn : rel.toColumn;
+                const targetCol = isFromSource ? rel.toColumn : rel.fromColumn;
+                conditions.push(`${currentSourceAlias}.${sourceCol} = ${targetAlias}.${targetCol}`);
+              });
+              
+              newJoin = {
+                id: `join-${Date.now()}-${Math.random()}`,
+                type: 'LEFT',
+                sourceTableId: currentSourceId,
+                sourceAlias: currentSourceAlias,
+                sourceColumn: directRelationships[0].from === currentSourceId ? directRelationships[0].fromColumn : directRelationships[0].toColumn,
+                targetTableId,
+                targetAlias,
+                targetColumn: directRelationships[0].from === currentSourceId ? directRelationships[0].toColumn : directRelationships[0].fromColumn,
+                edgeId: primaryEdgeId,
+                customCondition: conditions.join(' AND '),
+              };
+            } else {
+              // Relacionamento único - usar o edge do caminho
+              newJoin = {
+                id: `join-${Date.now()}-${Math.random()}`,
+                type: 'LEFT',
+                sourceTableId: currentSourceId,
+                sourceAlias: currentSourceAlias,
+                sourceColumn: edge.fromColumn,
+                targetTableId,
+                targetAlias,
+                targetColumn: edge.toColumn,
+                edgeId: edge.edgeId,
+              };
+            }
             
             setAST(prev => ({
               ...prev,
@@ -224,6 +257,13 @@ export function useQueryBuilder(options: UseQueryBuilderOptions): UseQueryBuilde
             currentSourceId = targetTableId;
             currentSourceAlias = targetAlias;
           }
+        }
+      } else {
+        // Não encontrou relacionamento - chamar callback para abrir JOIN manual
+        if (onMissingJoin) {
+          onMissingJoin(tableId, ast.from.table);
+          // Não adicionar a coluna ainda - esperar JOIN ser criado
+          return;
         }
       }
     }
@@ -348,24 +388,34 @@ export function useQueryBuilder(options: UseQueryBuilderOptions): UseQueryBuilde
       return;
     }
     
-    // Usar primeiro relacionamento encontrado
-    const rel = relationships[0];
+    // Se há múltiplos relacionamentos, usar todos eles com condições AND
     const sourceAlias = getTableAlias(source);
     const targetAlias = getUniqueAlias(targetTableId);
     
-    // Determinar direção do relacionamento
-    const isFromSource = rel.from === source;
+    // Construir condições para todos os relacionamentos
+    const conditions: string[] = [];
+    let primaryEdgeId = relationships[0].id;
+    
+    relationships.forEach(rel => {
+      const isFromSource = rel.from === source;
+      const sourceCol = isFromSource ? rel.fromColumn : rel.toColumn;
+      const targetCol = isFromSource ? rel.toColumn : rel.fromColumn;
+      conditions.push(`${sourceAlias}.${sourceCol} = ${targetAlias}.${targetCol}`);
+    });
     
     const newJoin: QueryJoin = {
       id: `join-${Date.now()}-${Math.random()}`,
       type: 'LEFT',
       sourceTableId: source,
       sourceAlias,
-      sourceColumn: isFromSource ? rel.fromColumn : rel.toColumn,
+      // Usar o primeiro relacionamento como padrão (para compatibilidade)
+      sourceColumn: relationships[0].from === source ? relationships[0].fromColumn : relationships[0].toColumn,
       targetTableId,
       targetAlias,
-      targetColumn: isFromSource ? rel.toColumn : rel.fromColumn,
-      edgeId: rel.id,
+      targetColumn: relationships[0].from === source ? relationships[0].toColumn : relationships[0].fromColumn,
+      edgeId: primaryEdgeId,
+      // Se há múltiplas condições, usar customCondition
+      customCondition: conditions.length > 1 ? conditions.join(' AND ') : undefined,
     };
     
     setAST(prev => ({

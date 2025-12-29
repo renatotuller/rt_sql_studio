@@ -326,39 +326,19 @@ export default function SelectList({
         sx={{
           height: '100%',
           display: 'flex',
-          flexDirection: 'column',
-          bgcolor: 'background.paper',
+          alignItems: 'center',
+          justifyContent: 'center',
+          p: 4,
+          textAlign: 'center',
         }}
       >
-        <Box
-          sx={{
-            p: 1.5,
-            borderBottom: 1,
-            borderColor: 'divider',
-          }}
-        >
-          <Typography variant="subtitle2" fontWeight={600}>
-            SELECT (0)
+        <Box sx={{ color: 'text.secondary' }}>
+          <Typography variant="body2" fontWeight={500} sx={{ mb: 1 }}>
+            Nenhuma coluna selecionada
           </Typography>
-        </Box>
-        <Box
-          sx={{
-            flex: 1,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            p: 4,
-            textAlign: 'center',
-          }}
-        >
-          <Box sx={{ color: 'text.secondary' }}>
-            <Typography variant="body2" fontWeight={500} sx={{ mb: 1 }}>
-              Nenhuma coluna selecionada
-            </Typography>
-            <Typography variant="caption">
-              Arraste colunas do catálogo de tabelas para cá
-            </Typography>
-          </Box>
+          <Typography variant="caption">
+            Arraste colunas do catálogo de tabelas para cá
+          </Typography>
         </Box>
       </Box>
     );
@@ -373,17 +353,6 @@ export default function SelectList({
         bgcolor: 'background.paper',
       }}
     >
-      <Box
-        sx={{
-          p: 1.5,
-          borderBottom: 1,
-          borderColor: 'divider',
-        }}
-      >
-        <Typography variant="subtitle2" fontWeight={600}>
-          SELECT ({fields.length})
-        </Typography>
-      </Box>
       <Box
         sx={{
           flex: 1,
