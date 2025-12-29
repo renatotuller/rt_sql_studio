@@ -4,7 +4,24 @@
  */
 
 import { useState, useEffect, useMemo } from 'react';
-import { Edit2, Trash2, ChevronRight, ChevronDown, Database, Code, Plus } from 'lucide-react';
+import {
+  Box,
+  Typography,
+  Button,
+  IconButton,
+  Paper,
+  Chip,
+  useTheme,
+} from '@mui/material';
+import {
+  Edit as EditIcon,
+  Delete as DeleteIcon,
+  ChevronRight as ChevronRightIcon,
+  ExpandMore as ExpandMoreIcon,
+  Storage as StorageIcon,
+  Code as CodeIcon,
+  Add as AddIcon,
+} from '@mui/icons-material';
 import type { QueryJoin, JoinType, QueryAST } from '../../types/query-builder';
 import type { GraphNode, GraphEdge } from '../../api/client';
 import SubqueryBuilder from './SubqueryBuilder';
@@ -52,6 +69,7 @@ export default function JoinEditor({
   preselectedViewTableId = null,
   onJoinCreated,
 }: JoinEditorProps) {
+  const theme = useTheme();
   const [expandedJoins, setExpandedJoins] = useState<Set<string>>(new Set(joins.map(j => j.id))); // Todos expandidos por padrão
   const [editingFromSubquery, setEditingFromSubquery] = useState(false);
   const [showManualJoinCreator, setShowManualJoinCreator] = useState(false);
@@ -142,29 +160,37 @@ export default function JoinEditor({
 
   if (joins.length === 0) {
     return (
-      <div className="h-full flex flex-col bg-white dark:bg-gray-900">
-        <div className="p-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+      <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'background.paper' }}>
+        <Box sx={{ p: 1.5, borderBottom: 1, borderColor: 'divider', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Typography variant="body2" sx={{ fontWeight: 600 }}>
             JOINs (0)
-          </h3>
+          </Typography>
           {onAddManual && (
-            <button
+            <Button
               onClick={() => setShowManualJoinCreator(true)}
-              className="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors flex items-center gap-1.5"
+              variant="contained"
+              size="small"
+              startIcon={<AddIcon />}
+              sx={{ textTransform: 'none', fontSize: '0.75rem', px: 1.5, py: 0.5 }}
               title="Criar JOIN manualmente"
             >
-              <Plus className="h-3.5 w-3.5" />
               Adicionar JOIN
-            </button>
+            </Button>
           )}
-        </div>
-        <div className="flex-1 flex items-center justify-center p-8 text-center">
-          <div className="text-gray-500 dark:text-gray-400">
-            <p className="text-sm font-medium mb-2">Nenhum JOIN adicionado</p>
-            <p className="text-xs">JOINs serão criados automaticamente ao adicionar colunas de outras tabelas</p>
-            <p className="text-xs mt-2">ou clique em "Adicionar JOIN" para criar manualmente</p>
-          </div>
-        </div>
+        </Box>
+        <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', p: 4, textAlign: 'center' }}>
+          <Box sx={{ color: 'text.secondary' }}>
+            <Typography variant="body2" sx={{ fontWeight: 500, mb: 1 }}>
+              Nenhum JOIN adicionado
+            </Typography>
+            <Typography variant="caption" display="block">
+              JOINs serão criados automaticamente ao adicionar colunas de outras tabelas
+            </Typography>
+            <Typography variant="caption" display="block" sx={{ mt: 1 }}>
+              ou clique em "Adicionar JOIN" para criar manualmente
+            </Typography>
+          </Box>
+        </Box>
 
         {/* Manual Join Creator */}
         {showManualJoinCreator && onAddManual && (
@@ -184,28 +210,30 @@ export default function JoinEditor({
             }}
           />
         )}
-      </div>
+      </Box>
     );
   }
 
   return (
-    <div className="h-full flex flex-col bg-white dark:bg-gray-900">
-      <div className="p-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'background.paper' }}>
+      <Box sx={{ p: 1.5, borderBottom: 1, borderColor: 'divider', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Typography variant="body2" sx={{ fontWeight: 600 }}>
           JOINs ({joins.length})
-        </h3>
+        </Typography>
         {onAddManual && (
-          <button
+          <Button
             onClick={() => setShowManualJoinCreator(true)}
-            className="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors flex items-center gap-1.5"
+            variant="contained"
+            size="small"
+            startIcon={<AddIcon />}
+            sx={{ textTransform: 'none', fontSize: '0.75rem', px: 1.5, py: 0.5 }}
             title="Criar JOIN manualmente"
           >
-            <Plus className="h-3.5 w-3.5" />
             Adicionar JOIN
-          </button>
+          </Button>
         )}
-      </div>
-      <div className="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar">
+      </Box>
+      <Box sx={{ flex: 1, overflowY: 'auto', p: 1.5, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
         {/* Mostrar cada JOIN (com tabela base quando for o primeiro) */}
         {joins.map((join, index) => {
           const isExpanded = expandedJoins.has(join.id);
@@ -215,85 +243,190 @@ export default function JoinEditor({
           const showBaseTable = isFirstJoin && !isExpanded;
 
           return (
-            <div key={join.id} className="space-y-2">
+            <Box key={join.id} sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
               {isExpanded && isFirstJoin && (
                 <>
                   {/* Mostrar tabela base separada quando expandido */}
-                  <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-800">
+                  <Paper
+                    elevation={0}
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1,
+                      px: 1.5,
+                      py: 1,
+                      bgcolor: theme.palette.mode === 'dark' ? 'primary.dark' : 'primary.light',
+                      border: 1,
+                      borderColor: 'primary.main',
+                      borderRadius: 1,
+                    }}
+                  >
                     {fromSubquery ? (
                       <>
-                        <Code className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                        <span className="font-mono text-sm font-medium text-blue-900 dark:text-blue-100">
+                        <CodeIcon sx={{ fontSize: 16, color: 'primary.main' }} />
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            fontFamily: 'monospace',
+                            fontSize: '0.75rem',
+                            fontWeight: 500,
+                            color: 'primary.contrastText',
+                          }}
+                        >
                           (SELECT ...) AS {baseTableAlias}
-                        </span>
-                        <span className="text-xs bg-blue-100 dark:bg-blue-800 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded">
-                          SUBQUERY
-                        </span>
+                        </Typography>
+                        <Chip
+                          label="SUBQUERY"
+                          size="small"
+                          sx={{
+                            height: 20,
+                            fontSize: '0.625rem',
+                            bgcolor: theme.palette.mode === 'dark' ? 'primary.dark' : 'primary.main',
+                            color: 'primary.contrastText',
+                          }}
+                        />
                         {onSetFromSubquery && (
-                          <button
+                          <Button
                             onClick={() => setEditingFromSubquery(true)}
-                            className="ml-auto px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center gap-1"
+                            size="small"
+                            variant="contained"
+                            startIcon={<CodeIcon sx={{ fontSize: 12 }} />}
+                            sx={{
+                              ml: 'auto',
+                              px: 1,
+                              py: 0.25,
+                              fontSize: '0.625rem',
+                              textTransform: 'none',
+                              minWidth: 'auto',
+                            }}
                             title="Editar subselect"
                           >
-                            <Code className="h-3 w-3" />
                             Editar
-                          </button>
+                          </Button>
                         )}
                       </>
                     ) : (
                       <>
-                        <Database className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                        <span className="font-mono text-sm font-medium text-blue-900 dark:text-blue-100">
+                        <StorageIcon sx={{ fontSize: 16, color: 'primary.main' }} />
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            fontFamily: 'monospace',
+                            fontSize: '0.75rem',
+                            fontWeight: 500,
+                            color: 'primary.contrastText',
+                          }}
+                        >
                           {getTableDisplayName(baseTableId)} AS {baseTableAlias}
-                        </span>
-                        <span className="text-xs bg-blue-100 dark:bg-blue-800 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded">
-                          BASE
-                        </span>
+                        </Typography>
+                        <Chip
+                          label="BASE"
+                          size="small"
+                          sx={{
+                            height: 20,
+                            fontSize: '0.625rem',
+                            bgcolor: theme.palette.mode === 'dark' ? 'primary.dark' : 'primary.main',
+                            color: 'primary.contrastText',
+                          }}
+                        />
                         {onSetFromSubquery && (
-                          <button
+                          <Button
                             onClick={() => setEditingFromSubquery(true)}
-                            className="ml-auto px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 flex items-center gap-1"
+                            size="small"
+                            variant="contained"
+                            color="success"
+                            startIcon={<CodeIcon sx={{ fontSize: 12 }} />}
+                            sx={{
+                              ml: 'auto',
+                              px: 1,
+                              py: 0.25,
+                              fontSize: '0.625rem',
+                              textTransform: 'none',
+                              minWidth: 'auto',
+                            }}
                             title="Usar subselect no FROM"
                           >
-                            <Code className="h-3 w-3" />
                             Subselect
-                          </button>
+                          </Button>
                         )}
                       </>
                     )}
-                  </div>
-                  <ChevronRight className="h-4 w-4 text-gray-400 ml-2" />
+                  </Paper>
+                  <ChevronRightIcon sx={{ fontSize: 16, color: 'text.disabled', ml: 1 }} />
                 </>
               )}
-              <div className="bg-gray-50 dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700">
+              <Paper
+                elevation={0}
+                sx={{
+                  bgcolor: theme.palette.mode === 'dark' ? 'grey.800' : 'grey.50',
+                  border: 1,
+                  borderColor: 'divider',
+                  borderRadius: 1,
+                }}
+              >
                 {/* Header do JOIN (sempre visível, compacto quando contraído) */}
-                <div className={`flex items-center justify-between ${isExpanded ? 'p-3' : 'px-3 py-2'}`}>
-                  <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <button
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    p: isExpanded ? 1.5 : 1,
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1, minWidth: 0 }}>
+                    <IconButton
                       onClick={() => toggleJoin(join.id)}
-                      className="p-0.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors flex-shrink-0"
+                      size="small"
+                      sx={{ p: 0.5, flexShrink: 0 }}
                       title={isExpanded ? 'Contrair' : 'Expandir'}
                     >
                       {isExpanded ? (
-                        <ChevronDown className="h-4 w-4 text-gray-500" />
+                        <ExpandMoreIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
                       ) : (
-                        <ChevronRight className="h-4 w-4 text-gray-500" />
+                        <ChevronRightIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
                       )}
-                    </button>
+                    </IconButton>
                     {isExpanded ? (
                       // Layout expandido: badge do tipo + ícone + tabela
                       <>
-                        <span className="px-1.5 py-0.5 text-xs font-semibold bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 rounded">
-                          {join.type}
-                        </span>
-                        <Database className="h-3.5 w-3.5 text-gray-500 flex-shrink-0" />
-                        <span className="font-mono text-xs font-medium truncate">
+                        <Chip
+                          label={join.type}
+                          size="small"
+                          sx={{
+                            height: 20,
+                            fontSize: '0.625rem',
+                            fontWeight: 600,
+                            bgcolor: theme.palette.mode === 'dark' ? 'secondary.dark' : 'secondary.light',
+                            color: theme.palette.mode === 'dark' ? 'secondary.contrastText' : 'secondary.dark',
+                          }}
+                        />
+                        <StorageIcon sx={{ fontSize: 14, color: 'text.secondary', flexShrink: 0 }} />
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            fontFamily: 'monospace',
+                            fontSize: '0.75rem',
+                            fontWeight: 500,
+                            noWrap: true,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                          }}
+                        >
                           {targetName} AS {join.targetAlias}
-                        </span>
+                        </Typography>
                       </>
                     ) : (
                       // Layout contraído: tabela base + tipo + tabela destino + condição ON (tudo em uma linha)
-                      <span className="font-mono text-xs text-gray-900 dark:text-gray-100 truncate">
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          fontFamily: 'monospace',
+                          fontSize: '0.75rem',
+                          noWrap: true,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                        }}
+                      >
                         {showBaseTable ? (
                           <>
                             {getTableDisplayName(baseTableId)} AS {baseTableAlias} {join.type} {targetName} AS {join.targetAlias} ON {formatJoinCondition(join)}
@@ -303,51 +436,69 @@ export default function JoinEditor({
                             {sourceName} AS {join.sourceAlias} {join.type} {targetName} AS {join.targetAlias} ON {formatJoinCondition(join)}
                           </>
                         )}
-                      </span>
+                      </Typography>
                     )}
-                  </div>
-                  <div className="flex items-center gap-1 ml-2 flex-shrink-0">
-                    <button
+                  </Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, ml: 1, flexShrink: 0 }}>
+                    <IconButton
                       onClick={(e) => {
                         e.stopPropagation();
                         handleStartEdit(join);
                       }}
-                      className="p-1 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"
+                      size="small"
+                      sx={{ p: 0.5, color: 'text.disabled', '&:hover': { color: 'primary.main' } }}
                       title="Editar"
                     >
-                      <Edit2 className="h-3.5 w-3.5" />
-                    </button>
-                    <button
+                      <EditIcon sx={{ fontSize: 14 }} />
+                    </IconButton>
+                    <IconButton
                       onClick={(e) => {
                         e.stopPropagation();
                         onRemove(join.id);
                       }}
-                      className="p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400"
+                      size="small"
+                      sx={{ p: 0.5, color: 'text.disabled', '&:hover': { color: 'error.main' } }}
                       title="Remover"
                     >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                </div>
+                      <DeleteIcon sx={{ fontSize: 14 }} />
+                    </IconButton>
+                  </Box>
+                </Box>
                 
                 {/* Conteúdo expandido do JOIN */}
                 {isExpanded && (
-                  <div className="px-3 pb-3 pt-0 border-t border-gray-200 dark:border-gray-700">
-                    <div className="mt-2">
-                      <div className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  <Box sx={{ px: 1.5, pb: 1.5, pt: 0, borderTop: 1, borderColor: 'divider' }}>
+                    <Box sx={{ mt: 1 }}>
+                      <Typography variant="caption" sx={{ fontWeight: 500, display: 'block', mb: 0.5 }}>
                         Condição do JOIN:
-                      </div>
-                      <div className="text-xs text-gray-600 dark:text-gray-400 font-mono bg-gray-100 dark:bg-gray-900 p-2 rounded">
-                        ON {formatJoinCondition(join)}
-                      </div>
-                    </div>
-                  </div>
+                      </Typography>
+                      <Paper
+                        elevation={0}
+                        sx={{
+                          p: 1,
+                          bgcolor: theme.palette.mode === 'dark' ? 'grey.900' : 'grey.100',
+                          borderRadius: 1,
+                        }}
+                      >
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            fontFamily: 'monospace',
+                            fontSize: '0.75rem',
+                            color: 'text.secondary',
+                          }}
+                        >
+                          ON {formatJoinCondition(join)}
+                        </Typography>
+                      </Paper>
+                    </Box>
+                  </Box>
                 )}
-              </div>
-            </div>
+              </Paper>
+            </Box>
           );
         })}
-      </div>
+      </Box>
 
       {/* Subquery Builder Dialog para FROM */}
       {editingFromSubquery && onSetFromSubquery && (
@@ -423,7 +574,6 @@ export default function JoinEditor({
           }}
         />
       )}
-    </div>
+    </Box>
   );
 }
-

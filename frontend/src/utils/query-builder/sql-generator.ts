@@ -197,9 +197,27 @@ function generateFrom(from: QueryAST['from'], options: GeneratorOptions): string
     return `FROM (${subquery}) AS ${from.alias}`;
   }
   
-  const tableName = from.schema 
-    ? `${escapeIdentifier(from.schema, dialect)}.${escapeIdentifier(from.table, dialect)}`
-    : escapeIdentifier(from.table, dialect);
+  // Se from.table contém um ponto, separar em schema e tabela
+  let tableName: string;
+  if (from.schema) {
+    // Já tem schema separado
+    tableName = `${escapeIdentifier(from.schema, dialect)}.${escapeIdentifier(from.table, dialect)}`;
+  } else if (from.table && from.table.includes('.')) {
+    // tableId contém schema.tabela (ex: dbo.tbProduto)
+    const parts = from.table.split('.');
+    if (parts.length >= 2) {
+      // Pegar o primeiro como schema e o resto como nome da tabela
+      const schema = parts[0];
+      const table = parts.slice(1).join('.'); // Caso tenha mais pontos no nome da tabela
+      tableName = `${escapeIdentifier(schema, dialect)}.${escapeIdentifier(table, dialect)}`;
+    } else {
+      // Mais de um ponto, tratar como nome completo
+      tableName = escapeIdentifier(from.table, dialect);
+    }
+  } else {
+    // Sem schema
+    tableName = escapeIdentifier(from.table, dialect);
+  }
   
   return `FROM ${tableName} AS ${from.alias}`;
 }

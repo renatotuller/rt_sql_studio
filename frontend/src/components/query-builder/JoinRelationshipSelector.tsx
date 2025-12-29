@@ -3,7 +3,26 @@
  */
 
 import { useState } from 'react';
-import { X, Database, ArrowRight, Check } from 'lucide-react';
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Box,
+  Typography,
+  Button,
+  IconButton,
+  Paper,
+  Checkbox,
+  useTheme,
+  alpha,
+} from '@mui/material';
+import {
+  Close as CloseIcon,
+  Storage as StorageIcon,
+  ArrowForward as ArrowForwardIcon,
+  Check as CheckIcon,
+} from '@mui/icons-material';
 import type { JoinOption } from '../../types/query-builder';
 
 interface JoinRelationshipSelectorProps {
@@ -23,6 +42,7 @@ export default function JoinRelationshipSelector({
   onSelect,
   onCancel,
 }: JoinRelationshipSelectorProps) {
+  const theme = useTheme();
   const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set());
 
   if (!isOpen || options.length === 0) return null;
@@ -63,131 +83,208 @@ export default function JoinRelationshipSelector({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[80vh] flex flex-col">
-        {/* Header */}
-        <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Escolher Relacionamentos
-            </h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              Múltiplos relacionamentos encontrados entre <span className="font-mono font-medium">{sourceTableName}</span> e <span className="font-mono font-medium">{targetTableName}</span>
-              <br />
-              <span className="text-xs">Selecione um ou mais relacionamentos para criar múltiplos JOINs</span>
-            </p>
-          </div>
-          <button
-            onClick={onCancel}
-            className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
-            title="Fechar"
+    <Dialog
+      open={isOpen}
+      onClose={handleCancel}
+      maxWidth="md"
+      fullWidth
+      PaperProps={{
+        sx: {
+          maxHeight: '80vh',
+          display: 'flex',
+          flexDirection: 'column',
+        },
+      }}
+    >
+      <DialogTitle
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          pb: 1,
+        }}
+      >
+        <Box>
+          <Typography variant="h6">Escolher Relacionamentos</Typography>
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+            Múltiplos relacionamentos encontrados entre{' '}
+            <Typography component="span" variant="caption" sx={{ fontFamily: 'monospace', fontWeight: 500 }}>
+              {sourceTableName}
+            </Typography>{' '}
+            e{' '}
+            <Typography component="span" variant="caption" sx={{ fontFamily: 'monospace', fontWeight: 500 }}>
+              {targetTableName}
+            </Typography>
+            <br />
+            <Typography component="span" variant="caption" fontSize="0.625rem">
+              Selecione um ou mais relacionamentos para criar múltiplos JOINs
+            </Typography>
+          </Typography>
+        </Box>
+        <IconButton
+          onClick={handleCancel}
+          size="small"
+          sx={{ color: 'text.secondary' }}
+          title="Fechar"
+        >
+          <CloseIcon />
+        </IconButton>
+      </DialogTitle>
+
+      <DialogContent dividers sx={{ flex: 1, overflow: 'auto' }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          {options.map((option, index) => {
+            const edge = option.path.edges[0]; // Primeira aresta (relacionamento direto)
+            const fromColumn = edge.fromColumn;
+            const toColumn = edge.toColumn;
+
+            const isSelected = selectedIndices.has(index);
+
+            return (
+              <Paper
+                key={index}
+                elevation={0}
+                component="button"
+                onClick={() => toggleOption(index)}
+                sx={{
+                  width: '100%',
+                  p: 2,
+                  border: 1,
+                  borderRadius: 1,
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                  bgcolor: isSelected
+                    ? alpha(theme.palette.primary.main, 0.08)
+                    : 'transparent',
+                  borderColor: isSelected
+                    ? 'primary.main'
+                    : 'divider',
+                  '&:hover': {
+                    borderColor: 'primary.main',
+                    bgcolor: alpha(theme.palette.primary.main, 0.04),
+                  },
+                  transition: 'all 0.2s',
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
+                  <Box
+                    sx={{
+                      mt: 0.5,
+                      p: 1,
+                      borderRadius: 1,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      bgcolor: isSelected
+                        ? 'primary.main'
+                        : alpha(theme.palette.primary.main, 0.1),
+                      color: isSelected ? 'primary.contrastText' : 'primary.main',
+                    }}
+                  >
+                    {isSelected ? (
+                      <CheckIcon sx={{ fontSize: 16 }} />
+                    ) : (
+                      <StorageIcon sx={{ fontSize: 16 }} />
+                    )}
+                  </Box>
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                      <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                        Opção {index + 1}
+                      </Typography>
+                      {option.directRelationships > 0 && (
+                        <Box
+                          component="span"
+                          sx={{
+                            px: 1,
+                            py: 0.25,
+                            fontSize: '0.625rem',
+                            bgcolor: theme.palette.mode === 'dark' ? 'success.dark' : 'success.light',
+                            color: 'success.contrastText',
+                            borderRadius: 0.5,
+                          }}
+                        >
+                          Relacionamento Direto
+                        </Box>
+                      )}
+                    </Box>
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 0.5,
+                        fontFamily: 'monospace',
+                        fontSize: '0.75rem',
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        <Typography variant="caption" color="text.secondary">
+                          {sourceTableName}
+                        </Typography>
+                        <Typography variant="caption" color="text.disabled">.</Typography>
+                        <Typography variant="caption" sx={{ fontWeight: 600, color: 'primary.main' }}>
+                          {fromColumn}
+                        </Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: 'text.disabled' }}>
+                        <ArrowForwardIcon sx={{ fontSize: 12 }} />
+                      </Box>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        <Typography variant="caption" color="text.secondary">
+                          {targetTableName}
+                        </Typography>
+                        <Typography variant="caption" color="text.disabled">.</Typography>
+                        <Typography variant="caption" sx={{ fontWeight: 600, color: 'primary.main' }}>
+                          {toColumn}
+                        </Typography>
+                      </Box>
+                    </Box>
+                    {option.description && (
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+                        {option.description}
+                      </Typography>
+                    )}
+                  </Box>
+                  <ArrowForwardIcon
+                    sx={{
+                      fontSize: 20,
+                      color: 'primary.main',
+                      opacity: 0,
+                      transition: 'opacity 0.2s',
+                      'button:hover &': {
+                        opacity: 1,
+                      },
+                    }}
+                  />
+                </Box>
+              </Paper>
+            );
+          })}
+        </Box>
+      </DialogContent>
+
+      <DialogActions sx={{ px: 2, py: 1.5 }}>
+        <Typography variant="body2" color="text.secondary">
+          {selectedIndices.size > 0 ? (
+            <>{selectedIndices.size} relacionamento(s) selecionado(s)</>
+          ) : (
+            <>Selecione pelo menos um relacionamento</>
+          )}
+        </Typography>
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <Button onClick={handleCancel} variant="outlined" size="small">
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleConfirm}
+            disabled={selectedIndices.size === 0}
+            variant="contained"
+            size="small"
           >
-            <X className="h-5 w-5 text-gray-500 dark:text-gray-400" />
-          </button>
-        </div>
-
-        {/* Options List */}
-        <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
-          <div className="space-y-2">
-            {options.map((option, index) => {
-              const edge = option.path.edges[0]; // Primeira aresta (relacionamento direto)
-              // A direção já está normalizada no path (sempre sourceTable → targetTable)
-              const fromColumn = edge.fromColumn;
-              const toColumn = edge.toColumn;
-
-              const isSelected = selectedIndices.has(index);
-
-              return (
-                <button
-                  key={index}
-                  onClick={() => toggleOption(index)}
-                  className={`w-full p-4 border rounded-lg transition-all text-left group ${
-                    isSelected
-                      ? 'border-blue-500 dark:border-blue-400 bg-blue-50 dark:bg-blue-900/30'
-                      : 'border-gray-200 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20'
-                  }`}
-                >
-                  <div className="flex items-start gap-3">
-                    <div className={`mt-1 p-2 rounded flex items-center justify-center ${
-                      isSelected
-                        ? 'bg-blue-500 dark:bg-blue-400'
-                        : 'bg-blue-100 dark:bg-blue-900/30'
-                    }`}>
-                      {isSelected ? (
-                        <Check className="h-4 w-4 text-white" />
-                      ) : (
-                        <Database className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-sm font-medium text-gray-900 dark:text-white">
-                          Opção {index + 1}
-                        </span>
-                        {option.directRelationships > 0 && (
-                          <span className="px-2 py-0.5 text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded">
-                            Relacionamento Direto
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-sm text-gray-700 dark:text-gray-300 font-mono space-y-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-gray-600 dark:text-gray-400">{sourceTableName}</span>
-                          <span className="text-gray-400">.</span>
-                          <span className="font-semibold text-blue-600 dark:text-blue-400">{fromColumn}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-gray-400">
-                          <ArrowRight className="h-3 w-3" />
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-gray-600 dark:text-gray-400">{targetTableName}</span>
-                          <span className="text-gray-400">.</span>
-                          <span className="font-semibold text-blue-600 dark:text-blue-400">{toColumn}</span>
-                        </div>
-                      </div>
-                      {option.description && (
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                          {option.description}
-                        </p>
-                      )}
-                    </div>
-                    <div className="text-blue-600 dark:text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <ArrowRight className="h-5 w-5" />
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
-          <div className="text-sm text-gray-600 dark:text-gray-400">
-            {selectedIndices.size > 0 ? (
-              <span>{selectedIndices.size} relacionamento(s) selecionado(s)</span>
-            ) : (
-              <span>Selecione pelo menos um relacionamento</span>
-            )}
-          </div>
-          <div className="flex gap-2">
-            <button
-              onClick={handleCancel}
-              className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
-            >
-              Cancelar
-            </button>
-            <button
-              onClick={handleConfirm}
-              disabled={selectedIndices.size === 0}
-              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed rounded transition-colors"
-            >
-              Confirmar ({selectedIndices.size})
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+            Confirmar ({selectedIndices.size})
+          </Button>
+        </Box>
+      </DialogActions>
+    </Dialog>
   );
 }
-

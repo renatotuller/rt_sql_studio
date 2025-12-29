@@ -3,7 +3,29 @@
  */
 
 import { useState, useMemo } from 'react';
-import { X, Check, AlertCircle, Link2 } from 'lucide-react';
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Box,
+  Typography,
+  Button,
+  IconButton,
+  TextField,
+  InputAdornment,
+  Paper,
+  Chip,
+  useTheme,
+  alpha,
+} from '@mui/material';
+import {
+  Close as CloseIcon,
+  Check as CheckIcon,
+  Warning as WarningIcon,
+  Link as LinkIcon,
+  Search as SearchIcon,
+} from '@mui/icons-material';
 import type { GraphNode, GraphEdge, Column } from '../../api/client';
 import { findTablesWithRelationships } from '../../utils/query-builder/graph-path-finder';
 
@@ -28,10 +50,10 @@ export default function MissingJoinSelector({
   onSelectTable,
   onCancel,
 }: MissingJoinSelectorProps) {
+  const theme = useTheme();
   const [searchTerm, setSearchTerm] = useState('');
 
   // Encontrar TODAS as tabelas intermediárias possíveis que conectam sourceTableId com targetTableId
-  // Uma tabela intermediária deve ter relacionamento com sourceTableId (ou tabelas incluídas) E com targetTableId
   const availableTables = useMemo(() => {
     const intermediateTables = new Map<string, {
       tableId: string;
@@ -157,140 +179,233 @@ export default function MissingJoinSelector({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-          <div className="flex items-center gap-3">
-            <AlertCircle className="h-6 w-6 text-amber-500" />
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                JOIN não encontrado
-              </h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                Não foi possível encontrar um relacionamento direto entre as tabelas
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={onCancel}
-            className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
-            title="Cancelar"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
+    <Dialog
+      open={true}
+      onClose={onCancel}
+      maxWidth="md"
+      fullWidth
+      PaperProps={{
+        sx: {
+          maxHeight: '90vh',
+          display: 'flex',
+          flexDirection: 'column',
+        },
+      }}
+    >
+      <DialogTitle
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          pb: 1,
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          <WarningIcon sx={{ fontSize: 24, color: 'warning.main' }} />
+          <Box>
+            <Typography variant="h6">JOIN não encontrado</Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+              Não foi possível encontrar um relacionamento direto entre as tabelas
+            </Typography>
+          </Box>
+        </Box>
+        <IconButton
+          onClick={onCancel}
+          size="small"
+          sx={{ color: 'text.secondary' }}
+          title="Cancelar"
+        >
+          <CloseIcon />
+        </IconButton>
+      </DialogTitle>
 
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
-          <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-md">
-            <p className="text-sm text-amber-800 dark:text-amber-200">
-              <strong>Coluna selecionada:</strong> <code className="px-1 py-0.5 bg-amber-100 dark:bg-amber-900/40 rounded">{targetTableName}.{targetColumn.name}</code>
-            </p>
-            <p className="text-sm text-amber-800 dark:text-amber-200 mt-1">
-              <strong>Tabela atual:</strong> <code className="px-1 py-0.5 bg-amber-100 dark:bg-amber-900/40 rounded">{sourceTableName}</code>
-            </p>
-            <p className="text-sm text-amber-800 dark:text-amber-200 mt-2">
-              Selecione uma tabela abaixo que tenha relacionamento com ambas as tabelas para criar o JOIN necessário.
-            </p>
-          </div>
+      <DialogContent dividers sx={{ flex: 1, overflow: 'auto' }}>
+        <Paper
+          elevation={0}
+          sx={{
+            mb: 2,
+            p: 1.5,
+            bgcolor: theme.palette.mode === 'dark' ? 'warning.dark' : 'warning.light',
+            border: 1,
+            borderColor: 'warning.main',
+            borderRadius: 1,
+          }}
+        >
+          <Typography variant="body2" sx={{ color: 'warning.contrastText', mb: 0.5 }}>
+            <strong>Coluna selecionada:</strong>{' '}
+            <Box component="code" sx={{ px: 0.5, py: 0.25, bgcolor: alpha(theme.palette.warning.main, 0.2), borderRadius: 0.5 }}>
+              {targetTableName}.{targetColumn.name}
+            </Box>
+          </Typography>
+          <Typography variant="body2" sx={{ color: 'warning.contrastText', mb: 0.5 }}>
+            <strong>Tabela atual:</strong>{' '}
+            <Box component="code" sx={{ px: 0.5, py: 0.25, bgcolor: alpha(theme.palette.warning.main, 0.2), borderRadius: 0.5 }}>
+              {sourceTableName}
+            </Box>
+          </Typography>
+          <Typography variant="body2" sx={{ color: 'warning.contrastText', mt: 1 }}>
+            Selecione uma tabela abaixo que tenha relacionamento com ambas as tabelas para criar o JOIN necessário.
+          </Typography>
+        </Paper>
 
-          {/* Busca */}
-          <div className="mb-4">
-            <input
-              type="text"
-              placeholder="Buscar tabela..."
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
+        {/* Busca */}
+        <TextField
+          fullWidth
+          size="small"
+          placeholder="Buscar tabela..."
+          value={searchTerm}
+          onChange={e => setSearchTerm(e.target.value)}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+              </InputAdornment>
+            ),
+          }}
+          sx={{ mb: 2 }}
+        />
 
-          {/* Lista de tabelas */}
-          {filteredTables.length === 0 ? (
-            <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-              <AlertCircle className="h-12 w-12 mx-auto mb-3 opacity-50" />
-              <p className="text-sm">
-                {searchTerm ? 'Nenhuma tabela encontrada com o termo de busca.' : 'Nenhuma tabela com relacionamento disponível encontrada.'}
-              </p>
-              <p className="text-xs mt-2 text-gray-400 dark:text-gray-500">
-                Você pode criar um JOIN manualmente através do editor de JOINs.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {filteredTables.map(table => {
-                const relationshipCount = table.relationshipCount || table.relationships.length;
-                const relationshipText = relationshipCount === 1 
-                  ? '1 relacionamento' 
-                  : `${relationshipCount} relacionamentos`;
+        {/* Lista de tabelas */}
+        {filteredTables.length === 0 ? (
+          <Box sx={{ textAlign: 'center', py: 4, color: 'text.secondary' }}>
+            <WarningIcon sx={{ fontSize: 48, mx: 'auto', mb: 1, opacity: 0.5 }} />
+            <Typography variant="body2" sx={{ mb: 0.5 }}>
+              {searchTerm ? 'Nenhuma tabela encontrada com o termo de busca.' : 'Nenhuma tabela com relacionamento disponível encontrada.'}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              Você pode criar um JOIN manualmente através do editor de JOINs.
+            </Typography>
+          </Box>
+        ) : (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+            {filteredTables.map(table => {
+              const relationshipCount = table.relationshipCount || table.relationships.length;
+              const relationshipText = relationshipCount === 1 
+                ? '1 relacionamento' 
+                : `${relationshipCount} relacionamentos`;
 
-                return (
-                  <button
-                    key={table.tableId}
-                    onClick={() => handleSelectTable(table.tableId)}
-                    className="w-full p-4 text-left border border-gray-200 dark:border-gray-700 rounded-lg hover:border-blue-500 dark:hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors group"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Link2 className="h-4 w-4 text-blue-500 dark:text-blue-400 flex-shrink-0" />
-                          <h3 className="font-semibold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400">
-                            {table.tableName}
-                          </h3>
-                          <span className="px-2 py-0.5 text-xs bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 rounded">
-                            {relationshipText}
-                          </span>
-                        </div>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 font-mono mb-2">
-                          {table.tableId}
-                        </p>
-                        <div className="space-y-1">
-                          {table.relationships.slice(0, 3).map((rel, idx) => {
-                            const relatedTableName = rel.relatedTableId.includes('.')
-                              ? rel.relatedTableId.split('.').pop() || rel.relatedTableId
-                              : rel.relatedTableId;
-                            
-                            return (
-                              <div key={idx} className="text-xs text-gray-600 dark:text-gray-300 flex items-center gap-2">
-                                <span className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 rounded">
-                                  {rel.direction === 'from' 
-                                    ? `${relatedTableName}.${rel.edge.fromColumn} → ${table.tableName}.${rel.edge.toColumn}`
-                                    : `${table.tableName}.${rel.edge.fromColumn} → ${relatedTableName}.${rel.edge.toColumn}`
-                                  }
-                                </span>
-                              </div>
-                            );
-                          })}
-                          {table.relationships.length > 3 && (
-                            <p className="text-xs text-gray-400 dark:text-gray-500 italic">
-                              +{table.relationships.length - 3} relacionamento(s) adicional(is)
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                      <Check className="h-5 w-5 text-blue-500 dark:text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 ml-2" />
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
+              return (
+                <Paper
+                  key={table.tableId}
+                  component="button"
+                  onClick={() => handleSelectTable(table.tableId)}
+                  elevation={0}
+                  sx={{
+                    width: '100%',
+                    p: 2,
+                    textAlign: 'left',
+                    border: 1,
+                    borderColor: 'divider',
+                    borderRadius: 1,
+                    cursor: 'pointer',
+                    '&:hover': {
+                      borderColor: 'primary.main',
+                      bgcolor: alpha(theme.palette.primary.main, 0.04),
+                    },
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+                    <Box sx={{ flex: 1 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                        <LinkIcon sx={{ fontSize: 16, color: 'primary.main', flexShrink: 0 }} />
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                          {table.tableName}
+                        </Typography>
+                        <Chip
+                          label={relationshipText}
+                          size="small"
+                          sx={{
+                            height: 20,
+                            fontSize: '0.625rem',
+                            bgcolor: theme.palette.mode === 'dark' ? 'primary.dark' : 'primary.light',
+                            color: 'primary.contrastText',
+                          }}
+                        />
+                      </Box>
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          fontFamily: 'monospace',
+                          fontSize: '0.75rem',
+                          color: 'text.secondary',
+                          display: 'block',
+                          mb: 1,
+                        }}
+                      >
+                        {table.tableId}
+                      </Typography>
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                        {table.relationships.slice(0, 3).map((rel, idx) => {
+                          const relatedTableName = rel.relatedTableId.includes('.')
+                            ? rel.relatedTableId.split('.').pop() || rel.relatedTableId
+                            : rel.relatedTableId;
+                          
+                          return (
+                            <Box
+                              key={idx}
+                              sx={{
+                                fontSize: '0.75rem',
+                                color: 'text.secondary',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 0.5,
+                              }}
+                            >
+                              <Box
+                                component="span"
+                                sx={{
+                                  px: 0.75,
+                                  py: 0.25,
+                                  bgcolor: theme.palette.mode === 'dark' ? 'grey.700' : 'grey.100',
+                                  borderRadius: 0.5,
+                                  fontFamily: 'monospace',
+                                }}
+                              >
+                                {rel.direction === 'from' 
+                                  ? `${relatedTableName}.${rel.edge.fromColumn} → ${table.tableName}.${rel.edge.toColumn}`
+                                  : `${table.tableName}.${rel.edge.fromColumn} → ${relatedTableName}.${rel.edge.toColumn}`
+                                }
+                              </Box>
+                            </Box>
+                          );
+                        })}
+                        {table.relationships.length > 3 && (
+                          <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                            +{table.relationships.length - 3} relacionamento(s) adicional(is)
+                          </Typography>
+                        )}
+                      </Box>
+                    </Box>
+                    <CheckIcon
+                      sx={{
+                        fontSize: 20,
+                        color: 'primary.main',
+                        opacity: 0,
+                        transition: 'opacity 0.2s',
+                        flexShrink: 0,
+                        ml: 1,
+                        'button:hover &': {
+                          opacity: 1,
+                        },
+                      }}
+                    />
+                  </Box>
+                </Paper>
+              );
+            })}
+          </Box>
+        )}
+      </DialogContent>
 
-        {/* Footer */}
-        <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
-          <p className="text-xs text-gray-500 dark:text-gray-400">
-            Selecione uma tabela para criar o JOIN necessário
-          </p>
-          <button
-            onClick={onCancel}
-            className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-md transition-colors"
-          >
-            Cancelar
-          </button>
-        </div>
-      </div>
-    </div>
+      <DialogActions sx={{ px: 2, py: 1.5 }}>
+        <Typography variant="caption" color="text.secondary">
+          Selecione uma tabela para criar o JOIN necessário
+        </Typography>
+        <Button onClick={onCancel} variant="outlined" size="small">
+          Cancelar
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 }

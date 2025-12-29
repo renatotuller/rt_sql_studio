@@ -40,14 +40,17 @@ export default function QueryClauseDialog({
     <Dialog
       open={isOpen}
       onClose={onClose}
-      maxWidth={maxWidthMap[width]}
-      fullWidth={width === 'full'}
+      maxWidth={false}
+      fullWidth
       PaperProps={{
         sx: {
-          maxHeight: '85vh',
-          ...(width === 'full' && {
-            maxWidth: '90vw',
-          }),
+          width: '95vw',
+          height: '95vh',
+          maxWidth: '95vw',
+          maxHeight: '95vh',
+          m: 0,
+          display: 'flex',
+          flexDirection: 'column',
         },
       }}
     >
@@ -57,6 +60,7 @@ export default function QueryClauseDialog({
           alignItems: 'center',
           justifyContent: 'space-between',
           pb: 1.5,
+          flexShrink: 0,
         }}
       >
         <Typography variant="h6" component="span">
@@ -80,9 +84,13 @@ export default function QueryClauseDialog({
         sx={{
           overflow: 'auto',
           p: 0,
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          minHeight: 0, // Permite que o flex funcione corretamente
         }}
       >
-        <Box sx={{ p: 2 }}>
+        <Box sx={{ p: 2, flex: 1, overflow: 'auto', minHeight: 0 }}>
           {children}
         </Box>
       </DialogContent>

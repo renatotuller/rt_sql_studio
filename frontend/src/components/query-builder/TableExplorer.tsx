@@ -211,6 +211,10 @@ export default function TableExplorer({
                         fontWeight: 500,
                         color: isIncluded ? 'primary.dark' : 'text.primary',
                         noWrap: true,
+                        sx: {
+                          fontSize: '0.7rem !important',
+                          lineHeight: 1.2,
+                        },
                       }}
                     />
                     <Chip
@@ -237,6 +241,11 @@ export default function TableExplorer({
                             py: 0.25,
                             borderRadius: 0.5,
                             cursor: 'grab',
+                            fontSize: '0.65rem !important',
+                            minHeight: 'auto',
+                            '& .MuiListItemText-primary': {
+                              fontSize: '0.65rem !important',
+                            },
                             '&:active': {
                               cursor: 'grabbing',
                             },
@@ -248,7 +257,7 @@ export default function TableExplorer({
                           <ListItemIcon sx={{ minWidth: 20 }}>
                             <DragIndicatorIcon
                               sx={{
-                                fontSize: 12,
+                                fontSize: 10,
                                 color: 'text.disabled',
                               }}
                             />
@@ -257,7 +266,7 @@ export default function TableExplorer({
                             <ListItemIcon sx={{ minWidth: 16 }}>
                               <VpnKeyIcon
                                 sx={{
-                                  fontSize: 12,
+                                  fontSize: 10,
                                   color: 'warning.main',
                                 }}
                                 titleAccess="Primary Key"
@@ -268,7 +277,7 @@ export default function TableExplorer({
                             <ListItemIcon sx={{ minWidth: 16 }}>
                               <LinkIcon
                                 sx={{
-                                  fontSize: 12,
+                                  fontSize: 10,
                                   color: 'primary.main',
                                 }}
                                 titleAccess="Foreign Key"
@@ -281,7 +290,12 @@ export default function TableExplorer({
                               variant: 'body2',
                               noWrap: true,
                               sx: {
-                                fontSize: '0.7rem',
+                                fontSize: '0.65rem !important',
+                                lineHeight: 1.1,
+                                fontWeight: 400,
+                                '& .MuiTypography-root': {
+                                  fontSize: '0.65rem !important',
+                                },
                               },
                             }}
                           />
@@ -289,9 +303,11 @@ export default function TableExplorer({
                             variant="caption"
                             sx={{
                               color: 'text.secondary',
-                              fontSize: '0.625rem',
+                              fontSize: '0.6rem !important',
                               maxWidth: 80,
                               noWrap: true,
+                              lineHeight: 1.1,
+                              fontWeight: 400,
                             }}
                             title={column.type}
                           >

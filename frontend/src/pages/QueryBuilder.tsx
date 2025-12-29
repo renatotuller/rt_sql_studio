@@ -3,7 +3,7 @@
  * Interface visual para construção de queries SQL
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   Button, 
@@ -28,12 +28,35 @@ import {
   InputLabel,
   Chip,
   Alert,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
 } from '@mui/material';
-import { 
-  ArrowLeft, Download, Upload, Play, RotateCcw, Code, Database, 
-  Loader2, AlertCircle, Check, Copy, Link, Filter, Layers, ArrowUpDown,
-  Eye, GitBranch, FileCode, ChevronDown, Star, RefreshCw
-} from 'lucide-react';
+import {
+  Check as CheckIcon,
+  ContentCopy as CopyIcon,
+  Download as DownloadIcon,
+  Code as CodeIcon,
+  ArrowBack as ArrowBackIcon,
+  Upload as UploadIcon,
+  PlayArrow as PlayIcon,
+  RotateLeft as RotateLeftIcon,
+  Storage as DatabaseIcon,
+  ErrorOutline as AlertCircleIcon,
+  Link as LinkIcon,
+  FilterList as FilterIcon,
+  Layers as LayersIcon,
+  SwapVert as ArrowUpDownIcon,
+  Visibility as EyeIcon,
+  AccountTree as GitBranchIcon,
+  Description as FileCodeIcon,
+  KeyboardArrowDown as ChevronDownIcon,
+  Star as StarIcon,
+  Refresh as RefreshIcon,
+  Close as CloseIcon,
+} from '@mui/icons-material';
 import * as XLSX from 'xlsx';
 import { schemaApi, connectionsApi, queryApi, type GraphNode, type GraphEdge, type Column } from '../api/client';
 import { useQueryBuilder } from '../hooks/useQueryBuilder';
@@ -46,6 +69,8 @@ import GroupByEditor from '../components/query-builder/GroupByEditor';
 import OrderByEditor from '../components/query-builder/OrderByEditor';
 import CTEEditor from '../components/query-builder/CTEEditor';
 import QueryClauseDialog from '../components/query-builder/QueryClauseDialog';
+import SavedQueriesDialog from '../components/query-builder/SavedQueriesDialog';
+import QueryGraphViewer from '../components/query-builder/QueryGraphViewer';
 import ViewSwitcher from '../components/ViewSwitcher';
 import InformativeLoading from '../components/InformativeLoading';
 import type { JoinType, QueryAST, WhereCondition, CTEClause } from '../types/query-builder';
@@ -84,6 +109,12 @@ export default function QueryBuilder() {
   const [resultLimit, setResultLimit] = useState(100);
   const [refreshing, setRefreshing] = useState(false);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
+  const [customFieldDialogOpen, setCustomFieldDialogOpen] = useState(false);
+  const [customExpression, setCustomExpression] = useState('');
+  const [customAlias, setCustomAlias] = useState('');
+  const [savedQueriesDialogOpen, setSavedQueriesDialogOpen] = useState(false);
+  const [importSQLDialogOpen, setImportSQLDialogOpen] = useState(false);
+  const [importSQL, setImportSQL] = useState('');
   const exportMenuRef = useRef<HTMLDivElement>(null);
   
   // Pending column para adicionar após JOIN ser criado
@@ -120,6 +151,7 @@ export default function QueryBuilder() {
     removeColumn,
     updateColumnAlias,
     reorderColumns,
+    addExpression,
     addManualJoin,
     updateJoin,
     removeJoin,
@@ -138,7 +170,89 @@ export default function QueryBuilder() {
     updateCTE,
     removeCTE,
     reset,
+    loadAST,
   } = queryBuilder;
+
+  // Estado para queries salvas
+  const [savedQueries, setSavedQueries] = useState<Array<{
+    id: string;
+    name: string;
+    description?: string;
+    sql: string;
+    ast: QueryAST;
+    createdAt: Date;
+    updatedAt: Date;
+  }>>([]);
+
+  // Carregar queries salvas do localStorage
+  useEffect(() => {
+    if (connId) {
+      const key = `saved_queries_${connId}`;
+      const stored = localStorage.getItem(key);
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          setSavedQueries(parsed.map((q: any) => ({
+            ...q,
+            createdAt: new Date(q.createdAt),
+            updatedAt: new Date(q.updatedAt),
+          })));
+        } catch (e) {
+          console.error('Erro ao carregar queries salvas:', e);
+        }
+      }
+    }
+  }, [connId]);
+
+  // Funções para gerenciar queries salvas
+  const handleSaveQuery = (name: string, description?: string) => {
+    if (!connId || !sql || !ast) return;
+    
+    const newQuery = {
+      id: `query_${Date.now()}_${Math.random()}`,
+      name,
+      description,
+      sql,
+      ast: JSON.parse(JSON.stringify(ast)), // Deep copy
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    
+    const updated = [...savedQueries, newQuery];
+    setSavedQueries(updated);
+    
+    const key = `saved_queries_${connId}`;
+    localStorage.setItem(key, JSON.stringify(updated));
+  };
+
+  const handleLoadQuery = (queryAST: QueryAST) => {
+    loadAST(queryAST);
+    setSavedQueriesDialogOpen(false);
+  };
+
+  const handleDeleteQuery = (id: string) => {
+    if (!connId) return;
+    
+    const updated = savedQueries.filter(q => q.id !== id);
+    setSavedQueries(updated);
+    
+    const key = `saved_queries_${connId}`;
+    localStorage.setItem(key, JSON.stringify(updated));
+  };
+
+  const handleUpdateQuery = (id: string, name: string, description?: string) => {
+    if (!connId || !sql || !ast) return;
+    
+    const updated = savedQueries.map(q => 
+      q.id === id 
+        ? { ...q, name, description, sql, ast: JSON.parse(JSON.stringify(ast)), updatedAt: new Date() }
+        : q
+    );
+    setSavedQueries(updated);
+    
+    const key = `saved_queries_${connId}`;
+    localStorage.setItem(key, JSON.stringify(updated));
+  };
   
   // Carregar dados
   useEffect(() => {
@@ -213,7 +327,9 @@ export default function QueryBuilder() {
     setActiveTab('resultados');
     
     try {
-      const response = await queryApi.execute(connId, sql);
+      // Se resultLimit for -1 (Todos), não passar limite (ou passar um valor muito alto)
+      const limit = resultLimit === -1 ? undefined : resultLimit;
+      const response = await queryApi.execute(connId, sql, limit);
       setExecutionResult(response.data);
     } catch (err: any) {
       console.error('Erro ao executar query:', err);
@@ -271,8 +387,30 @@ export default function QueryBuilder() {
   };
   
   const handleImportSQL = () => {
-    // TODO: Implementar importação de SQL
-    alert('Funcionalidade de importação em desenvolvimento');
+    setImportSQLDialogOpen(true);
+    setImportSQL('');
+  };
+
+  const handleExecuteImportedSQL = async () => {
+    if (!importSQL.trim() || !connId) return;
+    
+    setImportSQLDialogOpen(false);
+    setActiveTab('resultados');
+    setExecuting(true);
+    setExecutionError(null);
+    setExecutionResult(null);
+    
+    try {
+      // Se resultLimit for -1 (Todos), não passar limite (ou passar um valor muito alto)
+      const limit = resultLimit === -1 ? undefined : resultLimit;
+      const response = await queryApi.execute(connId, importSQL.trim(), limit);
+      setExecutionResult(response.data);
+    } catch (err: any) {
+      console.error('Erro ao executar SQL importado:', err);
+      setExecutionError(err.response?.data?.error || err.message || 'Erro ao executar query');
+    } finally {
+      setExecuting(false);
+    }
   };
 
   const handleRefreshSchema = async () => {
@@ -378,36 +516,38 @@ export default function QueryBuilder() {
   // Loading state
   if (loading) {
     return (
-      <div className="h-full flex items-center justify-center">
+      <Box sx={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <InformativeLoading 
           message="Carregando schema do banco de dados"
           type="schema"
           estimatedTime={10}
         />
-      </div>
+      </Box>
     );
   }
   
   // Error state
   if (error) {
     return (
-      <div className="h-full flex items-center justify-center">
-        <div className="text-center">
-          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+      <Box sx={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Box sx={{ textAlign: 'center', maxWidth: 500, px: 2 }}>
+          <AlertCircleIcon sx={{ fontSize: 48, color: 'error.main', mb: 2 }} />
+          <Typography variant="h6" sx={{ mb: 1, fontWeight: 600 }}>
             Erro ao carregar schema
-          </h2>
-          <p className="text-gray-500 dark:text-gray-400 mb-4">{error}</p>
-          <div className="flex gap-2 justify-center">
-            <button onClick={loadData} className="btn btn-primary">
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+            {error}
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
+            <Button onClick={loadData} variant="contained" size="small">
               Tentar Novamente
-            </button>
-            <button onClick={() => navigate('/connections')} className="btn btn-secondary">
+            </Button>
+            <Button onClick={() => navigate('/connections')} variant="outlined" size="small">
               Voltar
-            </button>
-          </div>
-        </div>
-      </div>
+            </Button>
+          </Box>
+        </Box>
+      </Box>
     );
   }
   
@@ -442,7 +582,7 @@ export default function QueryBuilder() {
               },
             }}
           >
-            <ArrowLeft size={14} />
+            <ArrowBackIcon sx={{ fontSize: 14 }} />
           </IconButton>
           <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.8125rem', lineHeight: 1.2 }}>
             Query Builder: {connectionName}
@@ -458,7 +598,7 @@ export default function QueryBuilder() {
                 refreshing ? (
                   <CircularProgress size={12} color="inherit" />
                 ) : (
-                  <RefreshCw size={12} />
+                  <RefreshIcon sx={{ fontSize: 12 }} />
                 )
               }
               sx={{
@@ -492,7 +632,7 @@ export default function QueryBuilder() {
                 executing ? (
                   <CircularProgress size={12} color="inherit" />
                 ) : (
-                  <Play size={12} />
+                  <PlayIcon sx={{ fontSize: 12 }} />
                 )
               }
               sx={{
@@ -525,7 +665,7 @@ export default function QueryBuilder() {
                 explaining ? (
                   <CircularProgress size={12} color="inherit" />
                 ) : (
-                  <Eye size={12} />
+                  <EyeIcon sx={{ fontSize: 12 }} />
                 )
               }
               sx={{
@@ -550,13 +690,10 @@ export default function QueryBuilder() {
               EXPLAIN
             </Button>
             <Button
-              onClick={() => {
-                // TODO: Implementar queries salvas
-                alert('Funcionalidade de queries salvas em desenvolvimento');
-              }}
+              onClick={() => setSavedQueriesDialogOpen(true)}
               variant="contained"
               size="small"
-              startIcon={<Star size={12} />}
+              startIcon={<StarIcon sx={{ fontSize: 12 }} />}
               sx={{
                 px: 1.5,
                 py: 0.25,
@@ -574,12 +711,60 @@ export default function QueryBuilder() {
             >
               Salvas
             </Button>
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1,
+                ml: 2,
+                pl: 2,
+                borderLeft: 1,
+                borderColor: 'divider',
+              }}
+            >
+              <Typography variant="caption" sx={{ color: 'text.secondary', whiteSpace: 'nowrap' }}>
+                Limite:
+              </Typography>
+              <TextField
+                type="number"
+                value={resultLimit === -1 ? '' : resultLimit}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (value === '') {
+                    setResultLimit(-1); // Todos
+                  } else {
+                    const num = parseInt(value, 10);
+                    if (!isNaN(num) && num > 0) {
+                      setResultLimit(Math.min(num, 10000)); // Máximo de 10000
+                    }
+                  }
+                }}
+                placeholder="100"
+                size="small"
+                inputProps={{
+                  min: 1,
+                  max: 10000,
+                  style: { textAlign: 'center', padding: '4px 8px' },
+                }}
+                sx={{
+                  width: 80,
+                  '& .MuiInputBase-root': {
+                    fontSize: '0.75rem',
+                    height: 28,
+                  },
+                  '& .MuiInputBase-input': {
+                    py: 0.5,
+                    textAlign: 'center',
+                  },
+                }}
+              />
+            </Box>
             <Button
               onClick={handleCopy}
               disabled={!sql}
               variant="outlined"
               size="small"
-              startIcon={copied ? <Check size={12} /> : <Copy size={12} />}
+              startIcon={copied ? <CheckIcon sx={{ fontSize: 12 }} /> : <CopyIcon sx={{ fontSize: 12 }} />}
               sx={{
                 px: 1.5,
                 py: 0.25,
@@ -607,7 +792,7 @@ export default function QueryBuilder() {
               disabled={!sql}
               variant="outlined"
               size="small"
-              startIcon={<Download size={12} />}
+              startIcon={<DownloadIcon sx={{ fontSize: 12 }} />}
               sx={{
                 px: 1.5,
                 py: 0.25,
@@ -636,8 +821,8 @@ export default function QueryBuilder() {
                 disabled={!executionResult || !executionResult.rows || executionResult.rows.length === 0}
                 variant="outlined"
                 size="small"
-                startIcon={<Download size={12} />}
-                endIcon={<ChevronDown size={10} />}
+                startIcon={<DownloadIcon sx={{ fontSize: 12 }} />}
+                endIcon={<ChevronDownIcon sx={{ fontSize: 10 }} />}
                 sx={{
                   px: 1.5,
                   py: 0.25,
@@ -690,7 +875,7 @@ export default function QueryBuilder() {
                           bgcolor: 'action.hover',
                         },
                       }}
-                      startIcon={<Download size={16} />}
+                      startIcon={<DownloadIcon sx={{ fontSize: 16 }} />}
                     >
                       CSV (separado por ;)
                     </Button>
@@ -707,7 +892,7 @@ export default function QueryBuilder() {
                           bgcolor: 'action.hover',
                         },
                       }}
-                      startIcon={<Download size={16} />}
+                      startIcon={<DownloadIcon sx={{ fontSize: 16 }} />}
                     >
                       Excel (.xlsx)
                     </Button>
@@ -724,7 +909,7 @@ export default function QueryBuilder() {
                           bgcolor: 'action.hover',
                         },
                       }}
-                      startIcon={<Download size={16} />}
+                      startIcon={<DownloadIcon sx={{ fontSize: 16 }} />}
                     >
                       Excel 97-2003 (.xls)
                     </Button>
@@ -736,7 +921,7 @@ export default function QueryBuilder() {
               onClick={handleImportSQL}
               variant="outlined"
               size="small"
-              startIcon={<Upload size={12} />}
+              startIcon={<UploadIcon sx={{ fontSize: 12 }} />}
               sx={{
                 px: 1.5,
                 py: 0.25,
@@ -755,39 +940,6 @@ export default function QueryBuilder() {
             >
               Importar
             </Button>
-            {executionResult && executionResult.rows && executionResult.rows.length > 0 && (
-              <Box
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 1.5,
-                  ml: 3,
-                  pl: 3,
-                  borderLeft: 1,
-                  borderColor: 'divider',
-                }}
-              >
-                <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                  Limite:
-                </Typography>
-                <FormControl size="small" sx={{ minWidth: 80 }}>
-                  <Select
-                    value={resultLimit}
-                    onChange={(e) => setResultLimit(Number(e.target.value))}
-                    sx={{
-                      fontSize: '0.75rem',
-                      height: 28,
-                    }}
-                  >
-                    <MenuItem value={50}>50</MenuItem>
-                    <MenuItem value={100}>100</MenuItem>
-                    <MenuItem value={500}>500</MenuItem>
-                    <MenuItem value={1000}>1000</MenuItem>
-                    <MenuItem value={-1}>Todos</MenuItem>
-                  </Select>
-                </FormControl>
-              </Box>
-            )}
           </Box>
       </Box>
       
@@ -876,30 +1028,39 @@ export default function QueryBuilder() {
                   </Alert>
                 ) : executionResult ? (
                   <>
-                    <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
-                      {limitedRows.length} de {executionResult.rows.length} linhas
-                    </Typography>
-                    {executionResult.rows.length > 0 ? (
-                      <TableContainer component={Paper} variant="outlined">
-                        <Table size="small" sx={{ minWidth: 650 }}>
-                          <TableHead>
-                            <TableRow>
-                              {executionResult.columns.map((col: string) => (
-                                <TableCell
-                                  key={col}
-                                  sx={{
-                                    fontWeight: 600,
-                                    textTransform: 'uppercase',
-                                    fontSize: '0.75rem',
-                                  }}
-                                >
-                                  {col}
-                                </TableCell>
-                              ))}
-                            </TableRow>
-                          </TableHead>
-                          <TableBody>
-                            {limitedRows.map((row: any, idx: number) => (
+                    {(() => {
+                      const limitedRows = resultLimit === -1 
+                        ? executionResult.rows 
+                        : executionResult.rows.slice(0, resultLimit);
+                      return (
+                        <>
+                          <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
+                            {resultLimit === -1 
+                              ? `${executionResult.rows.length} linhas (todas)`
+                              : `${limitedRows.length} de ${executionResult.rows.length} linhas`
+                            }
+                          </Typography>
+                          {executionResult.rows.length > 0 ? (
+                            <TableContainer component={Paper} variant="outlined">
+                              <Table size="small" sx={{ minWidth: 650 }}>
+                                <TableHead>
+                                  <TableRow>
+                                    {executionResult.columns.map((col: string) => (
+                                      <TableCell
+                                        key={col}
+                                        sx={{
+                                          fontWeight: 600,
+                                          textTransform: 'uppercase',
+                                          fontSize: '0.75rem',
+                                        }}
+                                      >
+                                        {col}
+                                      </TableCell>
+                                    ))}
+                                  </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                  {limitedRows.map((row: any, idx: number) => (
                               <TableRow 
                                 key={idx}
                                 sx={{
@@ -923,17 +1084,20 @@ export default function QueryBuilder() {
                                   </TableCell>
                                 ))}
                               </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </TableContainer>
-                    ) : (
-                      <Box sx={{ textAlign: 'center', py: 8 }}>
-                        <Typography variant="body2" color="text.secondary">
-                          Nenhum resultado encontrado
-                        </Typography>
-                      </Box>
-                    )}
+                                  ))}
+                                </TableBody>
+                              </Table>
+                            </TableContainer>
+                          ) : (
+                            <Box sx={{ textAlign: 'center', py: 8 }}>
+                              <Typography variant="body2" color="text.secondary">
+                                Nenhum resultado encontrado
+                              </Typography>
+                            </Box>
+                          )}
+                        </>
+                      );
+                    })()}
                   </>
                 ) : (
                   <Box 
@@ -945,7 +1109,7 @@ export default function QueryBuilder() {
                       flexDirection: 'column',
                     }}
                   >
-                    <Database size={48} style={{ opacity: 0.5, marginBottom: 16, color: theme.palette.text.disabled }} />
+                    <DatabaseIcon sx={{ fontSize: 48, opacity: 0.5, mb: 2, color: 'text.disabled' }} />
                     <Typography variant="body2" color="text.secondary">
                       Execute a query para ver os resultados
                     </Typography>
@@ -964,14 +1128,23 @@ export default function QueryBuilder() {
                   flexDirection: 'column',
                 }}
               >
-                <GitBranch size={48} style={{ opacity: 0.5, marginBottom: 16, color: theme.palette.text.disabled }} />
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                  Visualização do grafo da query
-                </Typography>
-                <Typography variant="caption" color="text.disabled">
-                  Mostra as tabelas e relacionamentos usados na query
-                </Typography>
-                {/* TODO: Implementar visualização do grafo */}
+                {includedTables.size === 0 ? (
+                  <>
+                    <GitBranchIcon sx={{ fontSize: 48, opacity: 0.5, mb: 2, color: 'text.disabled' }} />
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+                      Nenhuma tabela selecionada
+                    </Typography>
+                    <Typography variant="caption" color="text.disabled">
+                      Adicione colunas de tabelas para visualizar o grafo
+                    </Typography>
+                  </>
+                ) : (
+                  <QueryGraphViewer
+                    nodes={nodes}
+                    edges={edges}
+                    includedTableIds={includedTables}
+                  />
+                )}
               </Box>
             )}
             
@@ -1034,7 +1207,7 @@ export default function QueryBuilder() {
                       flexDirection: 'column',
                     }}
                   >
-                    <Eye size={48} style={{ opacity: 0.5, marginBottom: 16, color: theme.palette.text.disabled }} />
+                    <EyeIcon sx={{ fontSize: 48, opacity: 0.5, mb: 2, color: 'text.disabled' }} />
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                       Clique em "EXPLAIN" para ver o plano de execução
                     </Typography>
@@ -1075,8 +1248,9 @@ export default function QueryBuilder() {
             </Typography>
             <Button
               onClick={() => {
-                // TODO: Adicionar campo personalizado
-                alert('Funcionalidade de campo personalizado em desenvolvimento');
+                setCustomFieldDialogOpen(true);
+                setCustomExpression('');
+                setCustomAlias('');
               }}
               size="small"
               sx={{
@@ -1209,7 +1383,7 @@ export default function QueryBuilder() {
                   },
                 }}
               >
-                <Link size={12} />
+                <LinkIcon sx={{ fontSize: 12 }} />
                 <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.5625rem', lineHeight: 1 }}>
                   JOIN
                 </Typography>
@@ -1246,7 +1420,7 @@ export default function QueryBuilder() {
                   },
                 }}
               >
-                <Filter size={12} />
+                <FilterIcon sx={{ fontSize: 12 }} />
                 <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.5625rem', lineHeight: 1 }}>
                   WHERE
                 </Typography>
@@ -1283,7 +1457,7 @@ export default function QueryBuilder() {
                   },
                 }}
               >
-                <Layers size={12} />
+                <LayersIcon sx={{ fontSize: 12 }} />
                 <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.5625rem', lineHeight: 1 }}>
                   GROUP BY
                 </Typography>
@@ -1320,7 +1494,7 @@ export default function QueryBuilder() {
                   },
                 }}
               >
-                <ArrowUpDown size={12} />
+                <ArrowUpDownIcon sx={{ fontSize: 12 }} />
                 <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.5625rem', lineHeight: 1 }}>
                   ORDER BY
                 </Typography>
@@ -1357,7 +1531,7 @@ export default function QueryBuilder() {
                   },
                 }}
               >
-                <FileCode size={12} />
+                <FileCodeIcon sx={{ fontSize: 12 }} />
                 <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.5625rem', lineHeight: 1 }}>
                   CTE
                 </Typography>
@@ -1393,7 +1567,7 @@ export default function QueryBuilder() {
                   },
                 }}
               >
-                <GitBranch size={12} />
+                <GitBranchIcon sx={{ fontSize: 12 }} />
                 <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.5625rem', lineHeight: 1 }}>
                   UNION
                 </Typography>
@@ -1413,7 +1587,7 @@ export default function QueryBuilder() {
                   },
                 }}
               >
-                <Code size={12} />
+                <CodeIcon sx={{ fontSize: 12 }} />
                 <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.5625rem', lineHeight: 1 }}>
                   SQL
                 </Typography>
@@ -1529,13 +1703,17 @@ export default function QueryBuilder() {
         title="UNION"
         width="lg"
       >
-        <div className="p-4">
-          <div className="text-center py-8 text-gray-500">
-            <GitBranch className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p className="text-sm font-medium mb-2">Funcionalidade UNION em desenvolvimento</p>
-            <p className="text-xs">Em breve você poderá combinar múltiplas queries com UNION/UNION ALL</p>
-          </div>
-        </div>
+        <Box sx={{ p: 2 }}>
+          <Box sx={{ textAlign: 'center', py: 4, color: 'text.secondary' }}>
+            <GitBranchIcon sx={{ fontSize: 48, opacity: 0.5, mb: 2 }} />
+            <Typography variant="body2" sx={{ fontWeight: 500, mb: 1 }}>
+              Funcionalidade UNION em desenvolvimento
+            </Typography>
+            <Typography variant="caption">
+              Em breve você poderá combinar múltiplas queries com UNION/UNION ALL
+            </Typography>
+          </Box>
+        </Box>
       </QueryClauseDialog>
       
       {/* SQL Preview Dialog */}
@@ -1545,41 +1723,209 @@ export default function QueryBuilder() {
         title="SQL Gerado"
         width="xl"
       >
-        <div className="p-4">
+        <Box sx={{ p: 2 }}>
           {sql ? (
-            <div className="space-y-4">
-              <div className="flex justify-end gap-2">
-                <button
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+                <Button
                   onClick={handleCopy}
-                  className="px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300
-                           bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600
-                           hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors
-                           flex items-center gap-1.5"
+                  variant="outlined"
+                  size="small"
+                  startIcon={copied ? <CheckIcon sx={{ fontSize: 16 }} /> : <CopyIcon sx={{ fontSize: 16 }} />}
+                  sx={{ textTransform: 'none' }}
                 >
-                  {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                   {copied ? 'Copiado!' : 'Copiar'}
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={handleExportSQL}
-                  className="px-3 py-1.5 text-sm font-medium text-white bg-blue-600
-                           hover:bg-blue-700 rounded-lg transition-colors flex items-center gap-1.5"
+                  variant="contained"
+                  size="small"
+                  startIcon={<DownloadIcon sx={{ fontSize: 16 }} />}
+                  sx={{ textTransform: 'none' }}
                 >
-                  <Download className="h-4 w-4" />
                   Exportar
-                </button>
-              </div>
-              <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm font-mono">
-                {formatSQL(sql)}
-              </pre>
-            </div>
+                </Button>
+              </Box>
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 2,
+                  bgcolor: theme.palette.mode === 'dark' ? 'grey.900' : 'grey.900',
+                  borderRadius: 1,
+                  overflow: 'auto',
+                }}
+              >
+                <Typography
+                  component="pre"
+                  sx={{
+                    fontFamily: 'monospace',
+                    fontSize: '0.875rem',
+                    color: theme.palette.mode === 'dark' ? 'grey.100' : 'grey.100',
+                    margin: 0,
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-word',
+                  }}
+                >
+                  {formatSQL(sql)}
+                </Typography>
+              </Paper>
+            </Box>
           ) : (
-            <div className="text-center py-8 text-gray-500">
-              <Code className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>Nenhuma query gerada ainda</p>
-            </div>
+            <Box sx={{ textAlign: 'center', py: 4, color: 'text.secondary' }}>
+              <CodeIcon sx={{ fontSize: 48, opacity: 0.5, mb: 2 }} />
+              <Typography variant="body2">Nenhuma query gerada ainda</Typography>
+            </Box>
           )}
-        </div>
+        </Box>
       </QueryClauseDialog>
+
+      {/* Dialog para adicionar campo personalizado */}
+      <Dialog
+        open={customFieldDialogOpen}
+        onClose={() => setCustomFieldDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Typography variant="h6">Adicionar Campo Personalizado</Typography>
+            <IconButton
+              onClick={() => setCustomFieldDialogOpen(false)}
+              size="small"
+              sx={{ color: 'text.secondary' }}
+            >
+              <CloseIcon />
+            </IconButton>
+          </Box>
+        </DialogTitle>
+        <DialogContent dividers>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+            <TextField
+              label="Expressão SQL"
+              placeholder="Ex: COUNT(*), SUM(coluna), CONCAT(nome, ' ', sobrenome)"
+              value={customExpression}
+              onChange={(e) => setCustomExpression(e.target.value)}
+              multiline
+              rows={3}
+              fullWidth
+              helperText="Digite uma expressão SQL válida (funções, cálculos, etc.)"
+              sx={{
+                '& .MuiInputBase-root': {
+                  fontFamily: 'monospace',
+                  fontSize: '0.875rem',
+                },
+              }}
+            />
+            <TextField
+              label="Alias (opcional)"
+              placeholder="Ex: total_vendas, nome_completo"
+              value={customAlias}
+              onChange={(e) => setCustomAlias(e.target.value)}
+              fullWidth
+              helperText="Nome que aparecerá na coluna de resultados"
+            />
+            <Alert severity="info" sx={{ mt: 1 }}>
+              <Typography variant="caption">
+                <strong>Dica:</strong> Você pode usar colunas das tabelas usando seus aliases (ex: t1.nome, t2.valor)
+              </Typography>
+            </Alert>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ px: 2, py: 1.5 }}>
+          <Button onClick={() => setCustomFieldDialogOpen(false)} variant="outlined" size="small">
+            Cancelar
+          </Button>
+          <Button
+            onClick={() => {
+              if (customExpression.trim()) {
+                addExpression(customExpression.trim(), customAlias.trim() || undefined);
+                setCustomFieldDialogOpen(false);
+                setCustomExpression('');
+                setCustomAlias('');
+              }
+            }}
+            disabled={!customExpression.trim()}
+            variant="contained"
+            size="small"
+          >
+            Adicionar
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Dialog de queries salvas */}
+      <SavedQueriesDialog
+        isOpen={savedQueriesDialogOpen}
+        onClose={() => setSavedQueriesDialogOpen(false)}
+        savedQueries={savedQueries}
+        currentSQL={sql || ''}
+        currentAST={ast || { select: { fields: [] }, from: { table: '', alias: '' }, joins: [], where: { conditions: [] }, groupBy: { fields: [] }, orderBy: { fields: [] }, limit: null }}
+        onLoad={handleLoadQuery}
+        onSave={handleSaveQuery}
+        onDelete={handleDeleteQuery}
+        onUpdate={handleUpdateQuery}
+      />
+
+      {/* Dialog para importar SQL */}
+      <Dialog
+        open={importSQLDialogOpen}
+        onClose={() => setImportSQLDialogOpen(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Typography variant="h6">Importar e Executar SQL</Typography>
+            <IconButton
+              onClick={() => setImportSQLDialogOpen(false)}
+              size="small"
+              sx={{ color: 'text.secondary' }}
+            >
+              <CloseIcon />
+            </IconButton>
+          </Box>
+        </DialogTitle>
+        <DialogContent dividers>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+            <TextField
+              label="SQL"
+              placeholder="Cole ou digite sua query SQL aqui..."
+              value={importSQL}
+              onChange={(e) => setImportSQL(e.target.value)}
+              multiline
+              rows={10}
+              fullWidth
+              helperText="Cole uma query SQL para executar diretamente (não será convertida para o Query Builder)"
+              sx={{
+                '& .MuiInputBase-root': {
+                  fontFamily: 'monospace',
+                  fontSize: '0.875rem',
+                },
+              }}
+            />
+            <Alert severity="info">
+              <Typography variant="caption">
+                <strong>Nota:</strong> Esta funcionalidade executa o SQL diretamente sem convertê-lo para o Query Builder. 
+                Os resultados serão exibidos na aba "Resultados".
+              </Typography>
+            </Alert>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ px: 2, py: 1.5 }}>
+          <Button onClick={() => setImportSQLDialogOpen(false)} variant="outlined" size="small">
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleExecuteImportedSQL}
+            disabled={!importSQL.trim()}
+            variant="contained"
+            size="small"
+            startIcon={<PlayIcon sx={{ fontSize: 16 }} />}
+          >
+            Executar
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

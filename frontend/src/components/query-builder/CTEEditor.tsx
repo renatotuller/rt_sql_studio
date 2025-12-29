@@ -3,7 +3,23 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Plus, X, Edit2, Trash2, Code, ChevronDown, ChevronRight } from 'lucide-react';
+import {
+  Box,
+  Typography,
+  Button,
+  IconButton,
+  Paper,
+  TextField,
+  useTheme,
+} from '@mui/material';
+import {
+  Add as AddIcon,
+  Edit as EditIcon,
+  Delete as DeleteIcon,
+  Code as CodeIcon,
+  ChevronRight as ChevronRightIcon,
+  ExpandMore as ExpandMoreIcon,
+} from '@mui/icons-material';
 import type { CTEDefinition, QueryAST } from '../../types/query-builder';
 import type { GraphNode, GraphEdge } from '../../api/client';
 import SubqueryBuilder from './SubqueryBuilder';
@@ -27,6 +43,7 @@ export default function CTEEditor({
   edges,
   dbType = 'mysql',
 }: CTEEditorProps) {
+  const theme = useTheme();
   const [expandedCTEs, setExpandedCTEs] = useState<Set<number>>(new Set((ctes || []).map((_, i) => i)));
   const [editingCTEIndex, setEditingCTEIndex] = useState<number | null>(null);
   const [showAddCTE, setShowAddCTE] = useState(false);
@@ -85,59 +102,58 @@ export default function CTEEditor({
 
   if ((!ctes || ctes.length === 0) && !showAddCTE) {
     return (
-      <div className="h-full flex flex-col bg-white dark:bg-gray-900">
-        <div className="p-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+      <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'background.paper' }}>
+        <Box sx={{ p: 1.5, borderBottom: 1, borderColor: 'divider', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Typography variant="body2" sx={{ fontWeight: 600 }}>
             CTEs (0)
-          </h3>
-          <button
+          </Typography>
+          <Button
             onClick={() => setShowAddCTE(true)}
-            className="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors flex items-center gap-1.5"
+            variant="contained"
+            size="small"
+            startIcon={<AddIcon />}
+            sx={{ textTransform: 'none', fontSize: '0.75rem', px: 1.5, py: 0.5 }}
             title="Adicionar CTE"
           >
-            <Plus className="h-3.5 w-3.5" />
             Adicionar CTE
-          </button>
-        </div>
-        <div className="flex-1 flex items-center justify-center p-8 text-center">
-          <div className="text-gray-500 dark:text-gray-400">
-            <p className="text-sm font-medium mb-2">Nenhum CTE adicionado</p>
-            <p className="text-xs">CTEs (Common Table Expressions) permitem definir consultas temporárias reutilizáveis</p>
-            <p className="text-xs mt-2">Clique em "Adicionar CTE" para criar um</p>
-          </div>
-        </div>
+          </Button>
+        </Box>
+        <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', p: 4, textAlign: 'center' }}>
+          <Box sx={{ color: 'text.secondary' }}>
+            <Typography variant="body2" sx={{ fontWeight: 500, mb: 1 }}>
+              Nenhum CTE adicionado
+            </Typography>
+            <Typography variant="caption" display="block">
+              CTEs (Common Table Expressions) permitem definir consultas temporárias reutilizáveis
+            </Typography>
+            <Typography variant="caption" display="block" sx={{ mt: 1 }}>
+              Clique em "Adicionar CTE" para criar um
+            </Typography>
+          </Box>
+        </Box>
 
         {showAddCTE && (
-          <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
-            <div className="space-y-3 mb-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Nome do CTE <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={newCTEName}
-                  onChange={e => setNewCTEName(e.target.value)}
-                  placeholder="ex: vendas_por_mes"
-                  className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Colunas (opcional, separadas por vírgula)
-                </label>
-                <input
-                  type="text"
-                  value={newCTEColumns}
-                  onChange={e => setNewCTEColumns(e.target.value)}
-                  placeholder="ex: mes, total_vendas, quantidade"
-                  className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  Defina nomes de colunas explícitos para o CTE (opcional)
-                </p>
-              </div>
-            </div>
+          <Box sx={{ p: 2, borderTop: 1, borderColor: 'divider', bgcolor: theme.palette.mode === 'dark' ? 'grey.800' : 'grey.50' }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mb: 2 }}>
+              <TextField
+                label="Nome do CTE"
+                required
+                value={newCTEName}
+                onChange={e => setNewCTEName(e.target.value)}
+                placeholder="ex: vendas_por_mes"
+                size="small"
+                fullWidth
+              />
+              <TextField
+                label="Colunas (opcional, separadas por vírgula)"
+                value={newCTEColumns}
+                onChange={e => setNewCTEColumns(e.target.value)}
+                placeholder="ex: mes, total_vendas, quantidade"
+                size="small"
+                fullWidth
+                helperText="Defina nomes de colunas explícitos para o CTE (opcional)"
+              />
+            </Box>
             <SubqueryBuilder
               initialAST={null}
               onSave={handleAddCTE}
@@ -151,94 +167,142 @@ export default function CTEEditor({
               dbType={dbType}
               title="Query do CTE"
             />
-          </div>
+          </Box>
         )}
-      </div>
+      </Box>
     );
   }
 
   return (
-    <div className="h-full flex flex-col bg-white dark:bg-gray-900">
-      <div className="p-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'background.paper' }}>
+      <Box sx={{ p: 1.5, borderBottom: 1, borderColor: 'divider', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Typography variant="body2" sx={{ fontWeight: 600 }}>
           CTEs ({(ctes || []).length})
-        </h3>
-        <button
+        </Typography>
+        <Button
           onClick={() => setShowAddCTE(true)}
-          className="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors flex items-center gap-1.5"
+          variant="contained"
+          size="small"
+          startIcon={<AddIcon />}
+          sx={{ textTransform: 'none', fontSize: '0.75rem', px: 1.5, py: 0.5 }}
           title="Adicionar CTE"
         >
-          <Plus className="h-3.5 w-3.5" />
           Adicionar CTE
-        </button>
-      </div>
-      <div className="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar">
+        </Button>
+      </Box>
+      <Box sx={{ flex: 1, overflowY: 'auto', p: 1.5, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
         {(ctes || []).map((cte, index) => {
           const isExpanded = expandedCTEs.has(index);
           const isEditing = editingCTEIndex === index;
 
           return (
-            <div key={index} className="bg-gray-50 dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700">
-              <div className={`flex items-center justify-between ${isExpanded ? 'p-3' : 'px-3 py-2'}`}>
-                <div className="flex items-center gap-2 flex-1 min-w-0">
-                  <button
+            <Paper
+              key={index}
+              elevation={0}
+              sx={{
+                bgcolor: theme.palette.mode === 'dark' ? 'grey.800' : 'grey.50',
+                border: 1,
+                borderColor: 'divider',
+                borderRadius: 1,
+              }}
+            >
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  p: isExpanded ? 1.5 : 1,
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1, minWidth: 0 }}>
+                  <IconButton
                     onClick={() => toggleCTE(index)}
-                    className="p-0.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors flex-shrink-0"
+                    size="small"
+                    sx={{ p: 0.5, flexShrink: 0 }}
                     title={isExpanded ? 'Contrair' : 'Expandir'}
                   >
                     {isExpanded ? (
-                      <ChevronDown className="h-4 w-4 text-gray-500" />
+                      <ExpandMoreIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
                     ) : (
-                      <ChevronRight className="h-4 w-4 text-gray-500" />
+                      <ChevronRightIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
                     )}
-                  </button>
-                  <Code className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400 flex-shrink-0" />
-                  <span className="font-mono text-xs font-medium truncate">
+                  </IconButton>
+                  <CodeIcon sx={{ fontSize: 14, color: 'secondary.main', flexShrink: 0 }} />
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      fontFamily: 'monospace',
+                      fontSize: '0.75rem',
+                      fontWeight: 500,
+                      noWrap: true,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                    }}
+                  >
                     {cte.name}
                     {cte.columns && cte.columns.length > 0 && (
-                      <span className="text-gray-500 dark:text-gray-400 ml-1">
+                      <Typography component="span" variant="caption" sx={{ color: 'text.secondary', ml: 0.5 }}>
                         ({cte.columns.join(', ')})
-                      </span>
+                      </Typography>
                     )}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1 ml-2 flex-shrink-0">
-                  <button
+                  </Typography>
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, ml: 1, flexShrink: 0 }}>
+                  <IconButton
                     onClick={(e) => {
                       e.stopPropagation();
                       setEditingCTEIndex(index);
                     }}
-                    className="p-1 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"
+                    size="small"
+                    sx={{ p: 0.5, color: 'text.disabled', '&:hover': { color: 'primary.main' } }}
                     title="Editar"
                   >
-                    <Edit2 className="h-3.5 w-3.5" />
-                  </button>
-                  <button
+                    <EditIcon sx={{ fontSize: 14 }} />
+                  </IconButton>
+                  <IconButton
                     onClick={(e) => {
                       e.stopPropagation();
                       onRemove(index);
                     }}
-                    className="p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400"
+                    size="small"
+                    sx={{ p: 0.5, color: 'text.disabled', '&:hover': { color: 'error.main' } }}
                     title="Remover"
                   >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              </div>
+                    <DeleteIcon sx={{ fontSize: 14 }} />
+                  </IconButton>
+                </Box>
+              </Box>
 
               {isExpanded && !isEditing && (
-                <div className="px-3 pb-3 pt-0 border-t border-gray-200 dark:border-gray-700">
-                  <div className="mt-2 text-xs text-gray-600 dark:text-gray-400 font-mono bg-gray-100 dark:bg-gray-900 p-2 rounded">
-                    {cte.columns && cte.columns.length > 0
-                      ? `WITH ${cte.name} (${cte.columns.join(', ')}) AS (SELECT ...)`
-                      : `WITH ${cte.name} AS (SELECT ...)`
-                    }
-                  </div>
-                </div>
+                <Box sx={{ px: 1.5, pb: 1.5, pt: 0, borderTop: 1, borderColor: 'divider' }}>
+                  <Paper
+                    elevation={0}
+                    sx={{
+                      mt: 1,
+                      p: 1,
+                      bgcolor: theme.palette.mode === 'dark' ? 'grey.900' : 'grey.100',
+                      borderRadius: 1,
+                    }}
+                  >
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        fontFamily: 'monospace',
+                        fontSize: '0.75rem',
+                        color: 'text.secondary',
+                      }}
+                    >
+                      {cte.columns && cte.columns.length > 0
+                        ? `WITH ${cte.name} (${cte.columns.join(', ')}) AS (SELECT ...)`
+                        : `WITH ${cte.name} AS (SELECT ...)`
+                      }
+                    </Typography>
+                  </Paper>
+                </Box>
               )}
 
               {isEditing && (
-                <div className="px-3 pb-3 pt-0 border-t border-gray-200 dark:border-gray-700">
+                <Box sx={{ px: 1.5, pb: 1.5, pt: 0, borderTop: 1, borderColor: 'divider' }}>
                   <SubqueryBuilder
                     initialAST={cte.query}
                     onSave={(queryAST) => handleUpdateCTE(index, queryAST)}
@@ -248,44 +312,35 @@ export default function CTEEditor({
                     dbType={dbType}
                     title={`Editar CTE: ${cte.name}`}
                   />
-                </div>
+                </Box>
               )}
-            </div>
+            </Paper>
           );
         })}
-      </div>
+      </Box>
 
       {showAddCTE && (
-        <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
-          <div className="space-y-3 mb-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Nome do CTE <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={newCTEName}
-                onChange={e => setNewCTEName(e.target.value)}
-                placeholder="ex: vendas_por_mes"
-                className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Colunas (opcional, separadas por vírgula)
-              </label>
-              <input
-                type="text"
-                value={newCTEColumns}
-                onChange={e => setNewCTEColumns(e.target.value)}
-                placeholder="ex: mes, total_vendas, quantidade"
-                className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                Defina nomes de colunas explícitos para o CTE (opcional)
-              </p>
-            </div>
-          </div>
+        <Box sx={{ p: 2, borderTop: 1, borderColor: 'divider', bgcolor: theme.palette.mode === 'dark' ? 'grey.800' : 'grey.50' }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mb: 2 }}>
+            <TextField
+              label="Nome do CTE"
+              required
+              value={newCTEName}
+              onChange={e => setNewCTEName(e.target.value)}
+              placeholder="ex: vendas_por_mes"
+              size="small"
+              fullWidth
+            />
+            <TextField
+              label="Colunas (opcional, separadas por vírgula)"
+              value={newCTEColumns}
+              onChange={e => setNewCTEColumns(e.target.value)}
+              placeholder="ex: mes, total_vendas, quantidade"
+              size="small"
+              fullWidth
+              helperText="Defina nomes de colunas explícitos para o CTE (opcional)"
+            />
+          </Box>
           <SubqueryBuilder
             initialAST={null}
             onSave={handleAddCTE}
@@ -299,9 +354,8 @@ export default function CTEEditor({
             dbType={dbType}
             title="Query do CTE"
           />
-        </div>
+        </Box>
       )}
-    </div>
+    </Box>
   );
 }
-

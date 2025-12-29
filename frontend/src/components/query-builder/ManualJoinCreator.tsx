@@ -3,7 +3,33 @@
  */
 
 import { useState, useMemo, useEffect } from 'react';
-import { X, Plus, Code } from 'lucide-react';
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Box,
+  Typography,
+  Button,
+  IconButton,
+  TextField,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Paper,
+  Chip,
+  Alert,
+  useTheme,
+  alpha,
+  Grid,
+} from '@mui/material';
+import {
+  Close as CloseIcon,
+  Add as AddIcon,
+  Code as CodeIcon,
+  Delete as DeleteIcon,
+} from '@mui/icons-material';
 import type { GraphNode, Column, GraphEdge } from '../../api/client';
 import type { JoinType, QueryJoin, QueryAST } from '../../types/query-builder';
 import SubqueryBuilder from './SubqueryBuilder';
@@ -46,6 +72,7 @@ export default function ManualJoinCreator({
   onSave,
   onCancel,
 }: ManualJoinCreatorProps) {
+  const theme = useTheme();
   const isEditing = !!editingJoin;
   const [useSubqueryAsTarget, setUseSubqueryAsTarget] = useState(false);
   const [targetSubquery, setTargetSubquery] = useState<QueryAST | null>(null);
@@ -298,99 +325,120 @@ export default function ManualJoinCreator({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
-        {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-              {isEditing ? 'Editar JOIN Manual' : 'Criar JOIN Manual'}
-            </h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              {isEditing 
-                ? 'Edite o relacionamento entre as tabelas'
-                : 'Defina manualmente um relacionamento entre tabelas'}
-            </p>
-          </div>
-          <button
-            onClick={onCancel}
-            className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-            title="Fechar"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
+    <Dialog
+      open={true}
+      onClose={onCancel}
+      maxWidth="md"
+      fullWidth
+      PaperProps={{
+        sx: {
+          maxHeight: '90vh',
+        },
+      }}
+    >
+      <DialogTitle
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          pb: 1,
+        }}
+      >
+        <Box>
+          <Typography variant="h6">
+            {isEditing ? 'Editar JOIN Manual' : 'Criar JOIN Manual'}
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            {isEditing 
+              ? 'Edite o relacionamento entre as tabelas'
+              : 'Defina manualmente um relacionamento entre tabelas'}
+          </Typography>
+        </Box>
+        <IconButton
+          onClick={onCancel}
+          size="small"
+          sx={{ color: 'text.secondary' }}
+          title="Fechar"
+        >
+          <CloseIcon />
+        </IconButton>
+      </DialogTitle>
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
+      <DialogContent dividers sx={{ overflow: 'auto' }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
           {/* Tipo de JOIN */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Tipo de JOIN
-            </label>
-            <select
+          <FormControl fullWidth size="small">
+            <InputLabel>Tipo de JOIN</InputLabel>
+            <Select
               value={joinType}
               onChange={e => setJoinType(e.target.value as JoinType)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              label="Tipo de JOIN"
             >
               {JOIN_TYPES.map(type => (
-                <option key={type} value={type}>
+                <MenuItem key={type} value={type}>
                   {type} JOIN
-                </option>
+                </MenuItem>
               ))}
-            </select>
-          </div>
+            </Select>
+          </FormControl>
 
           {/* Tabela de Origem */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Tabela de Origem <span className="text-red-500">*</span>
-            </label>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+          <Box>
+            <Typography variant="body2" sx={{ fontWeight: 500, mb: 0.5 }}>
+              Tabela de Origem <Typography component="span" color="error">*</Typography>
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
               Selecione a tabela ou VIEW que já está na query e será a origem do JOIN
-            </p>
+            </Typography>
             {preselectedSourceTableId && !isEditing && (
-              <div className="mb-2 p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded text-xs text-blue-900 dark:text-blue-100">
-                <strong>ℹ️ Tabela pré-selecionada:</strong> A primeira tabela da query foi automaticamente selecionada como origem.
-              </div>
+              <Alert severity="info" sx={{ mb: 1, py: 0.5 }}>
+                <Typography variant="caption">
+                  <strong>ℹ️ Tabela pré-selecionada:</strong> A primeira tabela da query foi automaticamente selecionada como origem.
+                </Typography>
+              </Alert>
             )}
-            <select
-              value={sourceTableId}
-              onChange={e => {
-                setSourceTableId(e.target.value);
-                // Resetar todas as condições ao mudar tabela de origem
-                setConditions([{ id: `cond-${Date.now()}`, sourceColumn: '', targetColumn: '' }]);
-              }}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {availableSourceTables.length === 0 ? (
-                <option value="">Nenhuma tabela disponível</option>
-              ) : (
-                availableSourceTables.map(tableId => {
-                  const tableName = getTableDisplayName(tableId);
-                  return (
-                    <option key={tableId} value={tableId}>
-                      {tableName}
-                    </option>
-                  );
-                })
-              )}
-            </select>
-          </div>
+            <FormControl fullWidth size="small">
+              <Select
+                value={sourceTableId}
+                onChange={e => {
+                  setSourceTableId(e.target.value);
+                  // Resetar todas as condições ao mudar tabela de origem
+                  setConditions([{ id: `cond-${Date.now()}`, sourceColumn: '', targetColumn: '' }]);
+                }}
+                displayEmpty
+              >
+                {availableSourceTables.length === 0 ? (
+                  <MenuItem value="">Nenhuma tabela disponível</MenuItem>
+                ) : (
+                  availableSourceTables.map(tableId => {
+                    const tableName = getTableDisplayName(tableId);
+                    return (
+                      <MenuItem key={tableId} value={tableId}>
+                        {tableName}
+                      </MenuItem>
+                    );
+                  })
+                )}
+              </Select>
+            </FormControl>
+          </Box>
 
           {/* Tabela de Destino */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Tabela de Destino <span className="text-red-500">*</span>
-                </label>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
+          <Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.5 }}>
+              <Box>
+                <Typography variant="body2" sx={{ fontWeight: 500, mb: 0.5 }}>
+                  Tabela de Destino <Typography component="span" color="error">*</Typography>
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
                   Selecione uma tabela/VIEW ou use um subselect como destino
-                </p>
-              </div>
-              <button
-                type="button"
+                </Typography>
+              </Box>
+              <Button
+                size="small"
+                variant={useSubqueryAsTarget ? 'contained' : 'outlined'}
+                color={useSubqueryAsTarget ? 'success' : 'inherit'}
+                startIcon={<CodeIcon />}
                 onClick={() => {
                   setUseSubqueryAsTarget(!useSubqueryAsTarget);
                   if (!useSubqueryAsTarget) {
@@ -403,180 +451,241 @@ export default function ManualJoinCreator({
                     setTargetSubqueryAlias('');
                   }
                 }}
-                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors flex items-center gap-1.5 ${
-                  useSubqueryAsTarget
-                    ? 'bg-green-600 text-white hover:bg-green-700'
-                    : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
-                }`}
+                sx={{ textTransform: 'none', fontSize: '0.75rem', px: 1.5, py: 0.5 }}
                 title={useSubqueryAsTarget ? 'Usar tabela/VIEW como destino' : 'Usar subselect como destino'}
               >
-                <Code className="h-3.5 w-3.5" />
                 {useSubqueryAsTarget ? 'Usar Tabela' : 'Usar Subselect'}
-              </button>
-            </div>
+              </Button>
+            </Box>
             
             {preselectedTargetTableId && !isEditing && !useSubqueryAsTarget && (
-              <div className="mb-2 p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded text-xs text-blue-900 dark:text-blue-100">
-                <strong>ℹ️ VIEW pré-selecionada:</strong> A VIEW que você arrastou foi automaticamente selecionada como destino.
-              </div>
+              <Alert severity="info" sx={{ mb: 1, py: 0.5 }}>
+                <Typography variant="caption">
+                  <strong>ℹ️ VIEW pré-selecionada:</strong> A VIEW que você arrastou foi automaticamente selecionada como destino.
+                </Typography>
+              </Alert>
             )}
 
             {useSubqueryAsTarget ? (
-              <div className="space-y-3">
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
                 {targetSubquery ? (
-                  <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <Code className="h-4 w-4 text-green-600 dark:text-green-400" />
-                        <span className="text-sm font-medium text-green-900 dark:text-green-100">
+                  <Paper
+                    elevation={0}
+                    sx={{
+                      p: 1.5,
+                      bgcolor: theme.palette.mode === 'dark' ? 'success.dark' : 'success.light',
+                      border: 1,
+                      borderColor: 'success.main',
+                      borderRadius: 1,
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <CodeIcon sx={{ fontSize: 16, color: 'success.main' }} />
+                        <Typography variant="body2" sx={{ fontWeight: 500, color: 'success.contrastText' }}>
                           Subselect configurado
-                        </span>
-                        <span className="text-xs bg-green-100 dark:bg-green-800 text-green-700 dark:text-green-300 px-2 py-0.5 rounded">
-                          Alias: {targetSubqueryAlias || 'não definido'}
-                        </span>
-                      </div>
-                      <button
-                        type="button"
+                        </Typography>
+                        <Chip
+                          label={`Alias: ${targetSubqueryAlias || 'não definido'}`}
+                          size="small"
+                          sx={{
+                            height: 20,
+                            fontSize: '0.625rem',
+                            bgcolor: theme.palette.mode === 'dark' ? 'success.dark' : 'success.main',
+                            color: 'success.contrastText',
+                          }}
+                        />
+                      </Box>
+                      <Button
+                        size="small"
+                        variant="contained"
+                        color="success"
+                        startIcon={<CodeIcon sx={{ fontSize: 12 }} />}
                         onClick={() => setEditingSubquery(true)}
-                        className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 flex items-center gap-1"
+                        sx={{ textTransform: 'none', fontSize: '0.625rem', px: 1, py: 0.25 }}
                         title="Editar subselect"
                       >
-                        <Code className="h-3 w-3" />
                         Editar
-                      </button>
-                    </div>
-                    <p className="text-xs text-green-700 dark:text-green-300">
+                      </Button>
+                    </Box>
+                    <Typography variant="caption" sx={{ color: 'success.contrastText' }}>
                       Subselect criado com sucesso. Configure as condições de JOIN abaixo.
-                    </p>
-                  </div>
+                    </Typography>
+                  </Paper>
                 ) : (
-                  <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded">
-                    <p className="text-sm text-yellow-800 dark:text-yellow-200 mb-2">
+                  <Paper
+                    elevation={0}
+                    sx={{
+                      p: 1.5,
+                      bgcolor: theme.palette.mode === 'dark' ? 'warning.dark' : 'warning.light',
+                      border: 1,
+                      borderColor: 'warning.main',
+                      borderRadius: 1,
+                    }}
+                  >
+                    <Typography variant="body2" sx={{ mb: 1, color: 'warning.contrastText' }}>
                       Nenhum subselect configurado
-                    </p>
-                    <button
-                      type="button"
+                    </Typography>
+                    <Button
+                      size="small"
+                      variant="contained"
+                      color="warning"
+                      startIcon={<CodeIcon />}
                       onClick={() => setEditingSubquery(true)}
-                      className="px-3 py-2 text-sm font-medium bg-yellow-600 text-white rounded hover:bg-yellow-700 flex items-center gap-2"
+                      sx={{ textTransform: 'none', fontSize: '0.75rem' }}
                       title="Criar subselect"
                     >
-                      <Code className="h-4 w-4" />
                       Criar Subselect
-                    </button>
-                  </div>
+                    </Button>
+                  </Paper>
                 )}
-              </div>
+              </Box>
             ) : (
-              <select
-                value={targetTableId}
-                onChange={e => {
-                  setTargetTableId(e.target.value);
-                  // Resetar todas as condições ao mudar tabela de destino
-                  setConditions([{ id: `cond-${Date.now()}`, sourceColumn: '', targetColumn: '' }]);
-                }}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Selecione uma tabela ou VIEW</option>
-                {availableTargetTables.map(table => {
-                  const isPreselected = table.id === preselectedTargetTableId;
-                  return (
-                    <option key={table.id} value={table.id}>
-                      {isPreselected ? '⭐ ' : ''}{table.name}
-                    </option>
-                  );
-                })}
-              </select>
+              <FormControl fullWidth size="small">
+                <Select
+                  value={targetTableId}
+                  onChange={e => {
+                    setTargetTableId(e.target.value);
+                    // Resetar todas as condições ao mudar tabela de destino
+                    setConditions([{ id: `cond-${Date.now()}`, sourceColumn: '', targetColumn: '' }]);
+                  }}
+                  displayEmpty
+                >
+                  <MenuItem value="">Selecione uma tabela ou VIEW</MenuItem>
+                  {availableTargetTables.map(table => {
+                    const isPreselected = table.id === preselectedTargetTableId;
+                    return (
+                      <MenuItem key={table.id} value={table.id}>
+                        {isPreselected ? '⭐ ' : ''}{table.name}
+                      </MenuItem>
+                    );
+                  })}
+                </Select>
+              </FormControl>
             )}
-          </div>
+          </Box>
 
           {/* Condições de JOIN (múltiplas com AND) */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Condições de JOIN (AND) <span className="text-red-500">*</span>
-                </label>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+          <Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+              <Box>
+                <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                  Condições de JOIN (AND) <Typography component="span" color="error">*</Typography>
+                </Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
                   Defina como as tabelas serão relacionadas. Você pode adicionar múltiplas condições que serão combinadas com AND.
-                </p>
-              </div>
-              <button
+                </Typography>
+              </Box>
+              <Button
+                size="small"
+                startIcon={<AddIcon />}
                 onClick={addCondition}
-                className="px-2 py-1 text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 flex items-center gap-1"
+                sx={{ textTransform: 'none', fontSize: '0.75rem', px: 1 }}
                 title="Adicionar condição"
               >
-                <Plus className="h-3.5 w-3.5" />
                 Adicionar Condição
-              </button>
-            </div>
-            <div className="space-y-3">
+              </Button>
+            </Box>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
               {conditions.map((condition, index) => (
-                <div key={condition.id} className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700">
-                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400 w-8 flex-shrink-0">
+                <Paper
+                  key={condition.id}
+                  elevation={0}
+                  sx={{
+                    p: 1.5,
+                    bgcolor: theme.palette.mode === 'dark' ? 'grey.800' : 'grey.50',
+                    border: 1,
+                    borderColor: 'divider',
+                    borderRadius: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1,
+                  }}
+                >
+                  <Typography variant="caption" sx={{ fontWeight: 500, color: 'text.secondary', width: 32, flexShrink: 0 }}>
                     {index + 1}.
-                  </span>
-                  <div className="flex-1 grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
-                        Coluna Origem <span className="text-red-500">*</span>
-                      </label>
-                      <select
-                        value={condition.sourceColumn}
-                        onChange={e => updateCondition(condition.id, 'sourceColumn', e.target.value)}
-                        disabled={!sourceTableId}
-                        className="w-full px-2 py-1.5 text-xs border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        <option value="">Selecione...</option>
-                        {sourceColumns.map(col => (
-                          <option key={col.name} value={col.name}>
-                            {col.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
-                        Coluna Destino <span className="text-red-500">*</span>
-                      </label>
-                      <select
-                        value={condition.targetColumn}
-                        onChange={e => updateCondition(condition.id, 'targetColumn', e.target.value)}
-                        disabled={useSubqueryAsTarget ? (!targetSubquery || !targetSubqueryAlias) : !targetTableId}
-                        className="w-full px-2 py-1.5 text-xs border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        <option value="">Selecione...</option>
-                        {targetColumns.map(col => (
-                          <option key={col.name} value={col.name}>
-                            {col.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
+                  </Typography>
+                  <Grid container spacing={1} sx={{ flex: 1 }}>
+                    <Grid item xs={6}>
+                      <FormControl fullWidth size="small">
+                        <InputLabel>Coluna Origem</InputLabel>
+                        <Select
+                          value={condition.sourceColumn}
+                          onChange={e => updateCondition(condition.id, 'sourceColumn', e.target.value)}
+                          disabled={!sourceTableId}
+                          label="Coluna Origem"
+                        >
+                          <MenuItem value="">Selecione...</MenuItem>
+                          {sourceColumns.map(col => (
+                            <MenuItem key={col.name} value={col.name}>
+                              {col.name}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    </Grid>
+                    <Grid item xs={6}>
+                      <FormControl fullWidth size="small">
+                        <InputLabel>Coluna Destino</InputLabel>
+                        <Select
+                          value={condition.targetColumn}
+                          onChange={e => updateCondition(condition.id, 'targetColumn', e.target.value)}
+                          disabled={useSubqueryAsTarget ? (!targetSubquery || !targetSubqueryAlias) : !targetTableId}
+                          label="Coluna Destino"
+                        >
+                          <MenuItem value="">Selecione...</MenuItem>
+                          {targetColumns.map(col => (
+                            <MenuItem key={col.name} value={col.name}>
+                              {col.name}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    </Grid>
+                  </Grid>
                   {conditions.length > 1 && (
-                    <button
+                    <IconButton
                       onClick={() => removeCondition(condition.id)}
-                      className="p-1 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 flex-shrink-0"
+                      size="small"
+                      sx={{ color: 'error.main', flexShrink: 0 }}
                       title="Remover condição"
                     >
-                      <X className="h-4 w-4" />
-                    </button>
+                      <DeleteIcon sx={{ fontSize: 16 }} />
+                    </IconButton>
                   )}
-                </div>
+                </Paper>
               ))}
-            </div>
-          </div>
+            </Box>
+          </Box>
 
           {/* Preview */}
           {sourceTableId && (targetTableId || (useSubqueryAsTarget && targetSubquery)) && conditions.some(c => c.sourceColumn && c.targetColumn) && (
-            <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-md border border-blue-200 dark:border-blue-800">
-              <p className="text-xs font-mono text-blue-900 dark:text-blue-100">
+            <Paper
+              elevation={0}
+              sx={{
+                mt: 2,
+                p: 2,
+                bgcolor: theme.palette.mode === 'dark' ? 'primary.dark' : 'primary.light',
+                border: 1,
+                borderColor: 'primary.main',
+                borderRadius: 1,
+              }}
+            >
+              <Typography
+                variant="caption"
+                sx={{
+                  fontFamily: 'monospace',
+                  fontSize: '0.75rem',
+                  color: 'primary.contrastText',
+                  whiteSpace: 'pre-wrap',
+                }}
+              >
                 {joinType} JOIN {
                   useSubqueryAsTarget && targetSubquery
                     ? `(SELECT ...) AS ${targetSubqueryAlias || 'sub'}`
                     : `${getTableDisplayName(targetTableId)} AS ${generateApproximateAlias(targetTableId)}`
                 }
-                <br />
+                {'\n'}
                 ON {conditions.filter(c => c.sourceColumn && c.targetColumn).map((c, idx) => {
                   const sourceAlias = generateApproximateAlias(sourceTableId);
                   const targetAlias = useSubqueryAsTarget && targetSubquery
@@ -595,8 +704,8 @@ export default function ManualJoinCreator({
                     </span>
                   );
                 })}
-              </p>
-            </div>
+              </Typography>
+            </Paper>
           )}
 
           {/* Subquery Builder Dialog */}
@@ -617,41 +726,28 @@ export default function ManualJoinCreator({
               title="Subselect no JOIN (Tabela de Destino)"
             />
           )}
-        </div>
+        </Box>
+      </DialogContent>
 
-        {/* Footer */}
-        <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-end gap-3">
-          <button
-            onClick={onCancel}
-            className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
-          >
-            Cancelar
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={
-              !sourceTableId || 
-              !conditions.some(c => c.sourceColumn && c.targetColumn) ||
-              (!useSubqueryAsTarget && !targetTableId) ||
-              (useSubqueryAsTarget && (!targetSubquery || !targetSubqueryAlias))
-            }
-            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
-          >
-            {isEditing ? (
-              <>
-                <X className="h-4 w-4 rotate-45" />
-                Salvar Alterações
-              </>
-            ) : (
-              <>
-                <Plus className="h-4 w-4" />
-                Criar JOIN
-              </>
-            )}
-          </button>
-        </div>
-      </div>
-    </div>
+      <DialogActions sx={{ px: 3, py: 2 }}>
+        <Button onClick={onCancel} variant="outlined" size="small">
+          Cancelar
+        </Button>
+        <Button
+          onClick={handleSave}
+          variant="contained"
+          size="small"
+          disabled={
+            !sourceTableId || 
+            !conditions.some(c => c.sourceColumn && c.targetColumn) ||
+            (!useSubqueryAsTarget && !targetTableId) ||
+            (useSubqueryAsTarget && (!targetSubquery || !targetSubqueryAlias))
+          }
+          startIcon={isEditing ? <CloseIcon sx={{ transform: 'rotate(45deg)' }} /> : <AddIcon />}
+        >
+          {isEditing ? 'Salvar Alterações' : 'Criar JOIN'}
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 }
-

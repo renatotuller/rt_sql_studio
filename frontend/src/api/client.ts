@@ -195,7 +195,7 @@ export const openaiApi = {
 };
 
 export const queryApi = {
-  execute: (connId: string, sql: string) => api.post<ExecuteSQLResponse>(`/query/${connId}/execute`, { sql }),
+  execute: (connId: string, sql: string, limit?: number) => api.post<ExecuteSQLResponse>(`/query/${connId}/execute`, { sql, limit }),
 };
 
 export interface UIConfig {

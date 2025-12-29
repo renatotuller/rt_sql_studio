@@ -96,6 +96,15 @@ function SortableItem({ field, tableAlias, onRemove, onEditAlias }: SortableItem
         borderColor: 'divider',
         borderRadius: 1,
         transition: 'box-shadow 0.2s',
+        '&:hover': {
+          '& > .MuiBox-root:last-of-type': {
+            opacity: 1,
+          },
+        },
+        '& .action-buttons': {
+          opacity: 0,
+          transition: 'opacity 0.2s',
+        },
         '&:hover .action-buttons': {
           opacity: 1,
         },
@@ -178,8 +187,6 @@ function SortableItem({ field, tableAlias, onRemove, onEditAlias }: SortableItem
           display: 'flex',
           alignItems: 'center',
           gap: 0.5,
-          opacity: 0,
-          transition: 'opacity 0.2s',
         }}
       >
         {isEditing ? (
