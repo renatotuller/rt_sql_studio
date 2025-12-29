@@ -13,6 +13,7 @@ import type {
   OrderByField,
   JoinType,
   CTEClause,
+  UnionClause,
 } from '../types/query-builder';
 import type { GraphNode, GraphEdge } from '../api/client';
 import { generateSQL, generateAlias, createEmptyAST, type DatabaseDialect } from '../utils/query-builder/sql-generator';
@@ -43,6 +44,9 @@ interface UseQueryBuilderReturn {
   updateColumnAlias: (fieldId: string, alias: string) => void;
   reorderColumns: (fields: SelectField[]) => void;
   addExpression: (expression: string, alias?: string) => void;
+  addSubquery: (subqueryAST: QueryAST, alias?: string) => void;
+  updateSubquery: (fieldId: string, subqueryAST: QueryAST) => void;
+  addAggregate: (tableId: string, column: string, aggregateFunction: 'COUNT' | 'SUM' | 'AVG' | 'MIN' | 'MAX', alias?: string) => void;
   
   // Ações de JOIN
   addJoin: (targetTableId: string, sourceTableId?: string) => void;
@@ -79,6 +83,12 @@ interface UseQueryBuilderReturn {
   updateCTE: (cteId: string, updates: Partial<CTEClause>) => void;
   removeCTE: (cteId: string) => void;
   
+  // Ações de UNION
+  addUnion: (union: UnionClause) => void;
+  updateUnion: (unionId: string, updates: Partial<UnionClause>) => void;
+  removeUnion: (unionId: string) => void;
+  reorderUnions: (unions: UnionClause[]) => void;
+  
   // Ações de LIMIT
   setLimit: (limit: number | null, offset?: number) => void;
   
@@ -109,23 +119,37 @@ export function useQueryBuilder(options: UseQueryBuilderOptions): UseQueryBuilde
   }, [ast.from, ast.joins]);
   
   // Set de tabelas incluídas na query
+  // Uma tabela só está incluída se houver pelo menos uma coluna selecionada dela
   const includedTables = useMemo(() => {
     const tables = new Set<string>();
     
-    if (ast.from.table) {
+    // Coletar todas as tabelas que têm colunas selecionadas
+    const tablesWithColumns = new Set<string>();
+    for (const field of ast.select.fields) {
+      if (field.tableId) {
+        tablesWithColumns.add(field.tableId);
+      }
+    }
+    
+    // Adicionar tabela base apenas se houver colunas selecionadas dela
+    if (ast.from.table && tablesWithColumns.has(ast.from.table)) {
       tables.add(ast.from.table);
     }
     
+    // Adicionar tabelas de JOIN apenas se houver colunas selecionadas delas
     for (const join of ast.joins) {
-      tables.add(join.targetTableId);
+      if (tablesWithColumns.has(join.targetTableId)) {
+        tables.add(join.targetTableId);
+      }
     }
     
     return tables;
-  }, [ast.from.table, ast.joins]);
+  }, [ast.from.table, ast.joins, ast.select.fields]);
   
   // Gerar SQL
   const sql = useMemo(() => {
-    if (!ast.from.table && !ast.from.subquery) {
+    // Não gerar SQL se não há tabela base ou se não há colunas selecionadas
+    if ((!ast.from.table && !ast.from.subquery) || ast.select.fields.length === 0) {
       return '';
     }
     
@@ -286,12 +310,21 @@ export function useQueryBuilder(options: UseQueryBuilderOptions): UseQueryBuilde
   }, [ast, includedTables, nodes, edges, getTableAlias, getUniqueAlias]);
   
   const removeColumn = useCallback((fieldId: string) => {
-    setAST(prev => ({
-      ...prev,
-      select: {
-        fields: prev.select.fields.filter(f => f.id !== fieldId),
-      },
-    }));
+    setAST(prev => {
+      const newFields = prev.select.fields.filter(f => f.id !== fieldId);
+      
+      // Se não há mais colunas selecionadas, limpar tabela base e JOINs
+      if (newFields.length === 0) {
+        return createEmptyAST();
+      }
+      
+      return {
+        ...prev,
+        select: {
+          fields: newFields,
+        },
+      };
+    });
   }, []);
   
   const updateColumnAlias = useCallback((fieldId: string, alias: string) => {
@@ -323,6 +356,60 @@ export function useQueryBuilder(options: UseQueryBuilderOptions): UseQueryBuilde
       alias,
       order: ast.select.fields.length,
       type: 'expression',
+    };
+    
+    setAST(prev => ({
+      ...prev,
+      select: {
+        fields: [...prev.select.fields, newField],
+      },
+    }));
+  }, [ast.select.fields.length]);
+  
+  const addSubquery = useCallback((subqueryAST: QueryAST, alias?: string) => {
+    const newField: SelectField = {
+      id: `subquery-${Date.now()}-${Math.random()}`,
+      tableId: '',
+      column: '',
+      alias,
+      order: ast.select.fields.length,
+      type: 'subquery',
+      subquery: subqueryAST,
+    };
+    
+    setAST(prev => ({
+      ...prev,
+      select: {
+        fields: [...prev.select.fields, newField],
+      },
+    }));
+  }, [ast.select.fields.length]);
+  
+  const updateSubquery = useCallback((fieldId: string, subqueryAST: QueryAST) => {
+    setAST(prev => ({
+      ...prev,
+      select: {
+        fields: prev.select.fields.map(f =>
+          f.id === fieldId ? { ...f, subquery: subqueryAST } : f
+        ),
+      },
+    }));
+  }, []);
+  
+  const addAggregate = useCallback((
+    tableId: string,
+    column: string,
+    aggregateFunction: 'COUNT' | 'SUM' | 'AVG' | 'MIN' | 'MAX',
+    alias?: string
+  ) => {
+    const newField: SelectField = {
+      id: `agg-${Date.now()}-${Math.random()}`,
+      tableId,
+      column,
+      alias,
+      order: ast.select.fields.length,
+      type: 'aggregate',
+      aggregateFunction,
     };
     
     setAST(prev => ({
@@ -665,6 +752,38 @@ export function useQueryBuilder(options: UseQueryBuilderOptions): UseQueryBuilde
     }));
   }, []);
   
+  // ===== AÇÕES DE UNION =====
+  
+  const addUnion = useCallback((union: UnionClause) => {
+    setAST(prev => ({
+      ...prev,
+      unions: [...(prev.unions || []), union],
+    }));
+  }, []);
+  
+  const updateUnion = useCallback((unionId: string, updates: Partial<UnionClause>) => {
+    setAST(prev => ({
+      ...prev,
+      unions: (prev.unions || []).map(u =>
+        u.id === unionId ? { ...u, ...updates } : u
+      ),
+    }));
+  }, []);
+  
+  const removeUnion = useCallback((unionId: string) => {
+    setAST(prev => ({
+      ...prev,
+      unions: (prev.unions || []).filter(u => u.id !== unionId),
+    }));
+  }, []);
+  
+  const reorderUnions = useCallback((unions: UnionClause[]) => {
+    setAST(prev => ({
+      ...prev,
+      unions: unions.map((u, idx) => ({ ...u, order: idx })),
+    }));
+  }, []);
+  
   // ===== AÇÕES DE LIMIT =====
   
   const setLimit = useCallback((limit: number | null, offset?: number) => {
@@ -699,6 +818,9 @@ export function useQueryBuilder(options: UseQueryBuilderOptions): UseQueryBuilde
     updateColumnAlias,
     reorderColumns,
     addExpression,
+    addSubquery,
+    updateSubquery,
+    addAggregate,
     
     addJoin,
     addManualJoin,
@@ -722,6 +844,11 @@ export function useQueryBuilder(options: UseQueryBuilderOptions): UseQueryBuilde
     addCTE,
     updateCTE,
     removeCTE,
+    
+    addUnion,
+    updateUnion,
+    removeUnion,
+    reorderUnions,
     
     setLimit,
     

@@ -21,6 +21,7 @@ export interface QueryAST {
   orderBy?: OrderByClause;
   limit?: LimitClause;
   ctes?: CTEClause[];
+  unions?: UnionClause[];
 }
 
 export interface FromClause {
@@ -112,6 +113,16 @@ export interface CTEClause {
   columns?: string[];
   recursive?: boolean;
 }
+
+export interface UnionClause {
+  id: string;
+  query: QueryAST;
+  type: 'UNION' | 'UNION ALL';
+  order: number;
+}
+
+// Alias para compatibilidade
+export type CTEDefinition = CTEClause;
 
 // ===== JOIN PATH =====
 

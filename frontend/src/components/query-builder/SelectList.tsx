@@ -22,6 +22,8 @@ import {
   DragIndicator as DragIndicatorIcon,
   CheckBox as CheckBoxIcon,
   Link as LinkIcon,
+  Code as CodeIcon,
+  Layers as LayersIcon,
 } from '@mui/icons-material';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
@@ -33,6 +35,7 @@ interface SelectListProps {
   onReorder: (fields: SelectField[]) => void;
   onRemove: (fieldId: string) => void;
   onEditAlias: (fieldId: string, alias: string) => void;
+  onEditSubquery?: (fieldId: string) => void;
   tableAliases: Map<string, string>;
 }
 
@@ -41,9 +44,10 @@ interface SortableItemProps {
   tableAlias: string;
   onRemove: () => void;
   onEditAlias: (alias: string) => void;
+  onEditSubquery?: () => void;
 }
 
-function SortableItem({ field, tableAlias, onRemove, onEditAlias }: SortableItemProps) {
+function SortableItem({ field, tableAlias, onRemove, onEditAlias, onEditSubquery }: SortableItemProps) {
   const theme = useTheme();
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(field.alias || '');
@@ -138,7 +142,52 @@ function SortableItem({ field, tableAlias, onRemove, onEditAlias }: SortableItem
 
       {/* Conteúdo */}
       <Box sx={{ flex: 1, minWidth: 0 }}>
-        {field.expression ? (
+        {field.type === 'subquery' || field.subquery ? (
+          // Subselect
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <CodeIcon sx={{ fontSize: 14, color: 'secondary.main', flexShrink: 0 }} />
+            <Typography
+              variant="body2"
+              sx={{
+                fontFamily: 'monospace',
+                fontSize: '0.8125rem',
+                noWrap: true,
+                color: 'text.secondary',
+              }}
+            >
+              (SELECT ...)
+              {field.alias && (
+                <Box component="span" sx={{ color: 'primary.main' }}>
+                  {' AS '}
+                  {field.alias}
+                </Box>
+              )}
+            </Typography>
+          </Box>
+        ) : field.type === 'aggregate' || field.aggregateFunction ? (
+          // Função de agregação
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <LayersIcon sx={{ fontSize: 14, color: 'warning.main', flexShrink: 0 }} />
+            <Typography
+              variant="body2"
+              sx={{
+                fontFamily: 'monospace',
+                fontSize: '0.8125rem',
+                noWrap: true,
+              }}
+            >
+              {field.aggregateFunction}(
+              {field.column === '*' ? '*' : `${tableAlias}.${field.column}`}
+              )
+              {field.alias && (
+                <Box component="span" sx={{ color: 'primary.main' }}>
+                  {' AS '}
+                  {field.alias}
+                </Box>
+              )}
+            </Typography>
+          </Box>
+        ) : field.expression ? (
           // Expressão customizada
           <Typography
             variant="body2"
@@ -233,24 +282,43 @@ function SortableItem({ field, tableAlias, onRemove, onEditAlias }: SortableItem
           </>
         ) : (
           <>
-            <Tooltip title="Ver relacionamentos">
-              <IconButton
-                onClick={() => {
-                  // TODO: Mostrar relacionamentos da coluna
-                  alert('Funcionalidade de relacionamentos em desenvolvimento');
-                }}
-                size="small"
-                sx={{
-                  color: 'text.secondary',
-                  p: 0.5,
-                  '&:hover': {
-                    color: 'primary.main',
-                  },
-                }}
-              >
-                <LinkIcon sx={{ fontSize: 14 }} />
-              </IconButton>
-            </Tooltip>
+            {(field.type === 'subquery' || field.subquery) && onEditSubquery && (
+              <Tooltip title="Editar subselect">
+                <IconButton
+                  onClick={onEditSubquery}
+                  size="small"
+                  sx={{
+                    color: 'text.secondary',
+                    p: 0.5,
+                    '&:hover': {
+                      color: 'secondary.main',
+                    },
+                  }}
+                >
+                  <CodeIcon sx={{ fontSize: 14 }} />
+                </IconButton>
+              </Tooltip>
+            )}
+            {!(field.type === 'subquery' || field.subquery) && (
+              <Tooltip title="Ver relacionamentos">
+                <IconButton
+                  onClick={() => {
+                    // TODO: Mostrar relacionamentos da coluna
+                    alert('Funcionalidade de relacionamentos em desenvolvimento');
+                  }}
+                  size="small"
+                  sx={{
+                    color: 'text.secondary',
+                    p: 0.5,
+                    '&:hover': {
+                      color: 'primary.main',
+                    },
+                  }}
+                >
+                  <LinkIcon sx={{ fontSize: 14 }} />
+                </IconButton>
+              </Tooltip>
+            )}
             <Tooltip title="Editar alias">
               <IconButton
                 onClick={() => setIsEditing(true)}
@@ -293,6 +361,7 @@ export default function SelectList({
   onReorder,
   onRemove,
   onEditAlias,
+  onEditSubquery,
   tableAliases,
 }: SelectListProps) {
   const sensors = useSensors(
@@ -377,6 +446,7 @@ export default function SelectList({
                   tableAlias={getTableAlias(field.tableId)}
                   onRemove={() => onRemove(field.id)}
                   onEditAlias={(alias) => onEditAlias(field.id, alias)}
+                  onEditSubquery={onEditSubquery ? () => onEditSubquery(field.id) : undefined}
                 />
               ))}
             </Box>

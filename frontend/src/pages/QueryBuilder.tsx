@@ -33,6 +33,8 @@ import {
   DialogContent,
   DialogActions,
   TextField,
+  Menu,
+  Tooltip,
 } from '@mui/material';
 import {
   Check as CheckIcon,
@@ -68,12 +70,14 @@ import WhereEditor from '../components/query-builder/WhereEditor';
 import GroupByEditor from '../components/query-builder/GroupByEditor';
 import OrderByEditor from '../components/query-builder/OrderByEditor';
 import CTEEditor from '../components/query-builder/CTEEditor';
+import UnionEditor from '../components/query-builder/UnionEditor';
 import QueryClauseDialog from '../components/query-builder/QueryClauseDialog';
 import SavedQueriesDialog from '../components/query-builder/SavedQueriesDialog';
 import QueryGraphViewer from '../components/query-builder/QueryGraphViewer';
+import SubqueryBuilder from '../components/query-builder/SubqueryBuilder';
 import ViewSwitcher from '../components/ViewSwitcher';
 import InformativeLoading from '../components/InformativeLoading';
-import type { JoinType, QueryAST, WhereCondition, CTEClause } from '../types/query-builder';
+import type { JoinType, QueryAST, WhereCondition, CTEClause, UnionClause } from '../types/query-builder';
 
 type ActiveDialog = 'none' | 'joins' | 'where' | 'groupBy' | 'orderBy' | 'sql' | 'cte' | 'union';
 type ResultTab = 'resultados' | 'grafo' | 'explain';
@@ -114,13 +118,17 @@ export default function QueryBuilder() {
   const [customAlias, setCustomAlias] = useState('');
   const [savedQueriesDialogOpen, setSavedQueriesDialogOpen] = useState(false);
   const [importSQLDialogOpen, setImportSQLDialogOpen] = useState(false);
+  const [subqueryDialogOpen, setSubqueryDialogOpen] = useState(false);
+  const [editingSubqueryFieldId, setEditingSubqueryFieldId] = useState<string | null>(null);
+  const [aggregateDialogOpen, setAggregateDialogOpen] = useState(false);
+  const [aggregateFunction, setAggregateFunction] = useState<'COUNT' | 'SUM' | 'AVG' | 'MIN' | 'MAX'>('COUNT');
+  const [aggregateTableId, setAggregateTableId] = useState<string>('');
+  const [aggregateColumn, setAggregateColumn] = useState<string>('');
+  const [aggregateAlias, setAggregateAlias] = useState<string>('');
   const [importSQL, setImportSQL] = useState('');
-  const [autoExecuteOnDrop, setAutoExecuteOnDrop] = useState(false);
-  const autoExecuteCounterRef = useRef(0);
-  const isProcessingDropRef = useRef(false);
-  const lastFieldsCountRef = useRef(0);
-  const lastSQLRef = useRef('');
   const exportMenuRef = useRef<HTMLDivElement>(null);
+  const [advancedMenuOpen, setAdvancedMenuOpen] = useState(false);
+  const advancedMenuRef = useRef<HTMLDivElement>(null);
   
   // Pending column para adicionar após JOIN ser criado
   const pendingViewColumnRef = useRef<{ tableId: string; column: Column } | null>(null);
@@ -153,6 +161,9 @@ export default function QueryBuilder() {
     updateColumnAlias,
     reorderColumns,
     addExpression,
+    addSubquery,
+    updateSubquery,
+    addAggregate,
     addManualJoin,
     updateJoin,
     removeJoin,
@@ -170,6 +181,10 @@ export default function QueryBuilder() {
     addCTE,
     updateCTE,
     removeCTE,
+    addUnion,
+    updateUnion,
+    removeUnion,
+    reorderUnions,
     reset,
     loadAST,
   } = queryBuilder;
@@ -328,30 +343,12 @@ export default function QueryBuilder() {
   };
   
   const handleColumnDrop = (tableId: string, columnName: string) => {
-    // Proteção contra múltiplas chamadas simultâneas
-    if (isProcessingDropRef.current) {
-      console.log('Drop já está sendo processado, ignorando...');
-      return;
-    }
-    
-    isProcessingDropRef.current = true;
-    
     // Se não há tabela base, definir esta como base
     if (!ast.from.table) {
       setBaseTable(tableId);
-      // Se acabou de definir a tabela base, adicionar a coluna diretamente
+      // Aguardar um pouco para o estado atualizar antes de adicionar a coluna
       setTimeout(() => {
         addColumn(tableId, columnName);
-        // Incrementar contador para forçar nova execução
-        autoExecuteCounterRef.current += 1;
-        // Aguardar mais tempo para garantir que o SQL foi gerado pelo useMemo
-        setTimeout(() => {
-          // Verificar novamente se o SQL foi gerado antes de setar a flag
-          if (sql && sql.trim().length > 0) {
-            setAutoExecuteOnDrop(true);
-          }
-          isProcessingDropRef.current = false;
-        }, 300);
       }, 100);
       return;
     }
@@ -364,106 +361,44 @@ export default function QueryBuilder() {
     
     // Adicionar coluna (pode retornar sem adicionar se precisar de JOIN manual)
     addColumn(tableId, columnName);
-    
-    // Marcar para executar automaticamente após o SQL ser gerado (se coluna foi adicionada)
-    // Usar um delay maior para garantir que o SQL foi atualizado
-    setTimeout(() => {
-      const wasAdded = ast.select.fields.some(f => f.tableId === tableId && f.column === columnName);
-      if (wasAdded && !columnExists) {
-        // Incrementar contador para forçar nova execução
-        autoExecuteCounterRef.current += 1;
-        // Aguardar mais tempo para garantir que o SQL foi gerado pelo useMemo
-        setTimeout(() => {
-          setAutoExecuteOnDrop(true);
-          isProcessingDropRef.current = false;
-        }, 300);
-      } else {
-        isProcessingDropRef.current = false;
-      }
-    }, 150);
   };
 
-  // Executar automaticamente quando SQL for gerado após um drop
-  useEffect(() => {
-    if (autoExecuteOnDrop && sql && sql.trim().length > 0 && connId && !executing && ast.select.fields.length > 0) {
-      const currentCounter = autoExecuteCounterRef.current;
-      const currentSQL = sql; // Capturar SQL atual
+  // Executar query automaticamente após o drop
+  const executeQueryAfterDrop = async () => {
+    // Aguardar um delay para garantir que o SQL foi gerado
+    setTimeout(async () => {
+      // Verificar se temos SQL válido e colunas selecionadas
+      if (!sql || sql.trim().length === 0 || !connId || executing || ast.select.fields.length === 0) {
+        return;
+      }
       
-      console.log('🔄 [Auto-exec] Disparando execução automática...', {
-        counter: currentCounter,
-        sqlLength: currentSQL.length,
+      console.log('🔄 [Auto-exec] Executando query após drop...', {
+        sqlLength: sql.length,
         fieldsCount: ast.select.fields.length,
       });
       
-      // Resetar flag imediatamente para permitir próximas execuções
-      setAutoExecuteOnDrop(false);
+      setExecuting(true);
+      setExecutionError(null);
+      setExecutionResult(null);
+      setActiveTab('resultados');
       
-      // Pequeno delay para garantir que o SQL foi completamente gerado
-      const timer = setTimeout(async () => {
-        // Verificar se ainda é a mesma execução (evitar execuções duplicadas)
-        if (currentCounter !== autoExecuteCounterRef.current) {
-          console.log('⏭️ [Auto-exec] Execução cancelada - contador mudou');
-          return;
-        }
-        
-        // Verificar novamente as condições antes de executar
-        if (!currentSQL || !connId || executing) {
-          console.log('⏭️ [Auto-exec] Execução cancelada - condições não atendidas');
-          return;
-        }
-        
-        console.log('▶️ [Auto-exec] Executando query...');
-        setExecuting(true);
-        setExecutionError(null);
-        setExecutionResult(null);
-        setActiveTab('resultados');
-        
-        try {
-          const limit = resultLimit === -1 ? undefined : resultLimit;
-          const response = await queryApi.execute(connId, currentSQL, limit);
-          setExecutionResult(response.data);
-          console.log('✅ [Auto-exec] Query executada com sucesso');
-        } catch (err: any) {
-          console.error('❌ [Auto-exec] Erro ao executar query:', err);
-          setExecutionError(err.response?.data?.error || err.message || 'Erro ao executar query');
-        } finally {
-          setExecuting(false);
-        }
-      }, 400);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [autoExecuteOnDrop, sql, connId, executing, ast.select.fields.length, resultLimit]);
-  
-  // Monitorar mudanças no AST e SQL para detectar quando uma coluna foi adicionada
-  useEffect(() => {
-    const fieldsCount = ast.select.fields.length;
-    const currentSQL = sql;
-    
-    // Se uma nova coluna foi adicionada e o SQL mudou
-    if (fieldsCount > lastFieldsCountRef.current && currentSQL !== lastSQLRef.current && currentSQL.trim().length > 0) {
-      // Verificar se estamos processando um drop
-      if (isProcessingDropRef.current) {
-        console.log('🔍 [Auto-exec] Nova coluna detectada, aguardando flag...', {
-          fieldsCount,
-          lastCount: lastFieldsCountRef.current,
-          sqlLength: currentSQL.length,
+      try {
+        const limit = resultLimit === -1 ? undefined : resultLimit;
+        const response = await queryApi.execute(connId, sql, limit);
+        setExecutionResult(response.data);
+        console.log('✅ [Auto-exec] Query executada com sucesso', {
+          rows: response.data.rows?.length || 0,
+          totalRows: response.data.totalRows || 0,
         });
-        
-        // Aguardar um pouco e verificar se a flag foi setada
-        setTimeout(() => {
-          if (!autoExecuteOnDrop && isProcessingDropRef.current) {
-            console.log('🚀 [Auto-exec] Flag não foi setada, setando agora...');
-            autoExecuteCounterRef.current += 1;
-            setAutoExecuteOnDrop(true);
-          }
-        }, 100);
+      } catch (err: any) {
+        console.error('❌ [Auto-exec] Erro ao executar query:', err);
+        setExecutionError(err.response?.data?.error || err.message || 'Erro ao executar query');
+      } finally {
+        setExecuting(false);
       }
-    }
-    
-    lastFieldsCountRef.current = fieldsCount;
-    lastSQLRef.current = currentSQL;
-  }, [ast.select.fields.length, sql, autoExecuteOnDrop]);
+    }, 300); // Delay para garantir que o SQL foi gerado
+  };
+
   
   const handleCopy = async () => {
     if (!sql) return;
@@ -586,22 +521,35 @@ export default function QueryBuilder() {
     }
   };
   
-  // Fechar menu de exportação ao clicar fora
+  // Limpar resultados quando não houver colunas selecionadas
+  useEffect(() => {
+    if (ast.select.fields.length === 0) {
+      setExecutionResult(null);
+      setExecutionError(null);
+      setExplainResult(null);
+      setExplainError(null);
+    }
+  }, [ast.select.fields.length]);
+
+  // Fechar menu de exportação e menu avançado ao clicar fora
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (exportMenuRef.current && !exportMenuRef.current.contains(event.target as Node)) {
         setExportMenuOpen(false);
       }
+      if (advancedMenuRef.current && !advancedMenuRef.current.contains(event.target as Node)) {
+        setAdvancedMenuOpen(false);
+      }
     };
     
-    if (exportMenuOpen) {
+    if (exportMenuOpen || advancedMenuOpen) {
       document.addEventListener('mousedown', handleClickOutside);
     }
     
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [exportMenuOpen]);
+  }, [exportMenuOpen, advancedMenuOpen]);
   
   const handleExportCSV = () => {
     if (!executionResult || !executionResult.rows || executionResult.rows.length === 0) {
@@ -1067,6 +1015,7 @@ export default function QueryBuilder() {
             expandedTables={expandedTables}
             onToggleExpand={handleToggleExpand}
             onColumnDragStart={handleColumnDragStart}
+            onDragEnd={executeQueryAfterDrop}
             searchTerm={searchTerm}
             onSearchChange={setSearchTerm}
             includedTables={includedTables}
@@ -1400,28 +1349,88 @@ export default function QueryBuilder() {
             <Typography variant="subtitle2" sx={{ fontWeight: 600, fontSize: '0.75rem', lineHeight: '28px' }}>
               Campos SELECT ({ast.select.fields.length})
             </Typography>
-            <Button
-              onClick={() => {
-                setCustomFieldDialogOpen(true);
-                setCustomExpression('');
-                setCustomAlias('');
-              }}
-              size="small"
-              sx={{
-                px: 1,
-                py: 0.25,
-                minHeight: 28, // Mesma altura do TextField de busca
-                fontSize: '0.75rem',
-                fontWeight: 500,
-                textTransform: 'none',
-                color: 'primary.main',
-                '&:hover': {
-                  bgcolor: alpha(theme.palette.primary.main, 0.12),
-                },
-              }}
-            >
-              + Personalizada
-            </Button>
+            <Box sx={{ display: 'flex', gap: 0.5 }}>
+              <Button
+                onClick={() => {
+                  setCustomFieldDialogOpen(true);
+                  setCustomExpression('');
+                  setCustomAlias('');
+                }}
+                size="small"
+                sx={{
+                  px: 1,
+                  py: 0.25,
+                  minHeight: 28, // Mesma altura do TextField de busca
+                  fontSize: '0.75rem',
+                  fontWeight: 500,
+                  textTransform: 'none',
+                  color: 'primary.main',
+                  '&:hover': {
+                    bgcolor: alpha(theme.palette.primary.main, 0.12),
+                  },
+                }}
+              >
+                + Personalizada
+              </Button>
+              <Box sx={{ position: 'relative' }} ref={advancedMenuRef}>
+                <Button
+                  onClick={() => setAdvancedMenuOpen(!advancedMenuOpen)}
+                  size="small"
+                  endIcon={<ChevronDownIcon sx={{ fontSize: 12 }} />}
+                  sx={{
+                    px: 1,
+                    py: 0.25,
+                    minHeight: 28,
+                    fontSize: '0.75rem',
+                    fontWeight: 500,
+                    textTransform: 'none',
+                    color: 'text.secondary',
+                    '&:hover': {
+                      bgcolor: alpha(theme.palette.action.hover, 0.04),
+                    },
+                  }}
+                >
+                  + Avançado
+                </Button>
+                <Menu
+                  anchorEl={advancedMenuRef.current}
+                  open={advancedMenuOpen}
+                  onClose={() => setAdvancedMenuOpen(false)}
+                  anchorOrigin={{
+                    vertical: 'bottom',
+                    horizontal: 'left',
+                  }}
+                  transformOrigin={{
+                    vertical: 'top',
+                    horizontal: 'left',
+                  }}
+                >
+                  <MenuItem
+                    onClick={() => {
+                      setEditingSubqueryFieldId(null);
+                      setSubqueryDialogOpen(true);
+                      setAdvancedMenuOpen(false);
+                    }}
+                  >
+                    <CodeIcon sx={{ fontSize: 16, mr: 1, color: 'secondary.main' }} />
+                    Subselect
+                  </MenuItem>
+                  <MenuItem
+                    onClick={() => {
+                      setAggregateDialogOpen(true);
+                      setAggregateFunction('COUNT');
+                      setAggregateTableId('');
+                      setAggregateColumn('');
+                      setAggregateAlias('');
+                      setAdvancedMenuOpen(false);
+                    }}
+                  >
+                    <LayersIcon sx={{ fontSize: 16, mr: 1, color: 'warning.main' }} />
+                    Agregação
+                  </MenuItem>
+                </Menu>
+              </Box>
+            </Box>
           </Box>
           <Box 
             sx={{ 
@@ -1472,6 +1481,10 @@ export default function QueryBuilder() {
               onReorder={reorderColumns}
               onRemove={removeColumn}
               onEditAlias={updateColumnAlias}
+              onEditSubquery={(fieldId) => {
+                setEditingSubqueryFieldId(fieldId);
+                setSubqueryDialogOpen(true);
+              }}
               tableAliases={tableAliases}
             />
             {isDraggingOver && ast.select.fields.length === 0 && (
@@ -1866,25 +1879,6 @@ export default function QueryBuilder() {
         />
       </QueryClauseDialog>
       
-      <QueryClauseDialog
-        isOpen={activeDialog === 'union'}
-        onClose={() => setActiveDialog('none')}
-        title="UNION"
-        width="lg"
-      >
-        <Box sx={{ p: 2 }}>
-          <Box sx={{ textAlign: 'center', py: 4, color: 'text.secondary' }}>
-            <GitBranchIcon sx={{ fontSize: 48, opacity: 0.5, mb: 2 }} />
-            <Typography variant="body2" sx={{ fontWeight: 500, mb: 1 }}>
-              Funcionalidade UNION em desenvolvimento
-            </Typography>
-            <Typography variant="caption">
-              Em breve você poderá combinar múltiplas queries com UNION/UNION ALL
-            </Typography>
-          </Box>
-        </Box>
-      </QueryClauseDialog>
-      
       {/* SQL Preview Dialog */}
       <QueryClauseDialog
         isOpen={activeDialog === 'sql'}
@@ -2014,6 +2008,225 @@ export default function QueryBuilder() {
               }
             }}
             disabled={!customExpression.trim()}
+            variant="contained"
+            size="small"
+          >
+            Adicionar
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Dialog de Subselect no SELECT */}
+      <Dialog
+        open={subqueryDialogOpen}
+        onClose={() => {
+          setSubqueryDialogOpen(false);
+          setEditingSubqueryFieldId(null);
+        }}
+        maxWidth={false}
+        fullWidth
+        PaperProps={{
+          sx: {
+            width: '95vw',
+            height: '95vh',
+            maxWidth: '95vw',
+            maxHeight: '95vh',
+            m: 0,
+          },
+        }}
+      >
+        <DialogTitle>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Typography variant="h6">
+              {editingSubqueryFieldId ? 'Editar Subselect' : 'Adicionar Subselect'}
+            </Typography>
+            <IconButton
+              onClick={() => {
+                setSubqueryDialogOpen(false);
+                setEditingSubqueryFieldId(null);
+              }}
+              size="small"
+              sx={{ color: 'text.secondary' }}
+            >
+              <CloseIcon />
+            </IconButton>
+          </Box>
+        </DialogTitle>
+        <DialogContent dividers sx={{ p: 0, height: 'calc(95vh - 64px)', overflow: 'hidden' }}>
+          <SubqueryBuilder
+            initialAST={
+              editingSubqueryFieldId
+                ? ast.select.fields.find(f => f.id === editingSubqueryFieldId)?.subquery || null
+                : null
+            }
+            onSave={(subqueryAST) => {
+              if (editingSubqueryFieldId) {
+                updateSubquery(editingSubqueryFieldId, subqueryAST);
+              } else {
+                addSubquery(subqueryAST);
+              }
+              setSubqueryDialogOpen(false);
+              setEditingSubqueryFieldId(null);
+            }}
+            onCancel={() => {
+              setSubqueryDialogOpen(false);
+              setEditingSubqueryFieldId(null);
+            }}
+            nodes={nodes}
+            edges={edges}
+            dbType={dbType}
+            title={editingSubqueryFieldId ? 'Editar Subselect' : 'Criar Subselect'}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de Agregação */}
+      <Dialog
+        open={aggregateDialogOpen}
+        onClose={() => {
+          setAggregateDialogOpen(false);
+          setAggregateFunction('COUNT');
+          setAggregateTableId('');
+          setAggregateColumn('');
+          setAggregateAlias('');
+        }}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Typography variant="h6">Adicionar Função de Agregação</Typography>
+            <IconButton
+              onClick={() => {
+                setAggregateDialogOpen(false);
+                setAggregateFunction('COUNT');
+                setAggregateTableId('');
+                setAggregateColumn('');
+                setAggregateAlias('');
+              }}
+              size="small"
+              sx={{ color: 'text.secondary' }}
+            >
+              <CloseIcon />
+            </IconButton>
+          </Box>
+        </DialogTitle>
+        <DialogContent dividers>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+            <FormControl fullWidth>
+              <InputLabel>Função de Agregação</InputLabel>
+              <Select
+                value={aggregateFunction}
+                onChange={(e) => setAggregateFunction(e.target.value as typeof aggregateFunction)}
+                label="Função de Agregação"
+              >
+                <MenuItem value="COUNT">COUNT - Contar linhas</MenuItem>
+                <MenuItem value="SUM">SUM - Somar valores</MenuItem>
+                <MenuItem value="AVG">AVG - Média</MenuItem>
+                <MenuItem value="MIN">MIN - Valor mínimo</MenuItem>
+                <MenuItem value="MAX">MAX - Valor máximo</MenuItem>
+              </Select>
+            </FormControl>
+            
+            <FormControl fullWidth>
+              <InputLabel>Tabela</InputLabel>
+              <Select
+                value={aggregateTableId}
+                onChange={(e) => {
+                  setAggregateTableId(e.target.value);
+                  setAggregateColumn(''); // Limpar coluna ao mudar tabela
+                }}
+                label="Tabela"
+              >
+                <MenuItem value="">Selecione uma tabela...</MenuItem>
+                {Array.from(includedTables).map(tableId => {
+                  const node = nodes.find(n => n.id === tableId);
+                  return (
+                    <MenuItem key={tableId} value={tableId}>
+                      {node?.label || tableId}
+                    </MenuItem>
+                  );
+                })}
+              </Select>
+            </FormControl>
+            
+            <FormControl fullWidth disabled={!aggregateTableId || aggregateFunction === 'COUNT'}>
+              <InputLabel>Coluna</InputLabel>
+              <Select
+                value={aggregateColumn}
+                onChange={(e) => setAggregateColumn(e.target.value)}
+                label="Coluna"
+              >
+                <MenuItem value="">
+                  {aggregateFunction === 'COUNT' ? 'COUNT(*) - Contar todas as linhas' : 'Selecione uma coluna...'}
+                </MenuItem>
+                {aggregateTableId && aggregateFunction !== 'COUNT' && (() => {
+                  const node = nodes.find(n => n.id === aggregateTableId);
+                  return node?.columns?.map(col => (
+                    <MenuItem key={col.name} value={col.name}>
+                      {col.name} ({col.type})
+                    </MenuItem>
+                  ));
+                })()}
+              </Select>
+              {aggregateFunction === 'COUNT' && (
+                <Typography variant="caption" sx={{ mt: 0.5, color: 'text.secondary' }}>
+                  COUNT(*) conta todas as linhas, independente da coluna
+                </Typography>
+              )}
+            </FormControl>
+            
+            <TextField
+              label="Alias (opcional)"
+              value={aggregateAlias}
+              onChange={(e) => setAggregateAlias(e.target.value)}
+              placeholder="Ex: total_vendas, quantidade"
+              fullWidth
+              helperText="Nome que aparecerá na coluna de resultados"
+            />
+            
+            <Alert severity="info">
+              <Typography variant="caption">
+                <strong>Dica:</strong> Funções de agregação geralmente são usadas com GROUP BY para agrupar resultados.
+              </Typography>
+            </Alert>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ px: 2, py: 1.5 }}>
+          <Button
+            onClick={() => {
+              setAggregateDialogOpen(false);
+              setAggregateFunction('COUNT');
+              setAggregateTableId('');
+              setAggregateColumn('');
+              setAggregateAlias('');
+            }}
+            variant="outlined"
+            size="small"
+          >
+            Cancelar
+          </Button>
+          <Button
+            onClick={() => {
+              if (aggregateTableId) {
+                // Para COUNT, usar '*' como coluna se não especificada
+                const column = aggregateFunction === 'COUNT' ? '*' : aggregateColumn;
+                if (column) {
+                  addAggregate(
+                    aggregateTableId,
+                    column,
+                    aggregateFunction,
+                    aggregateAlias.trim() || undefined
+                  );
+                  setAggregateDialogOpen(false);
+                  setAggregateFunction('COUNT');
+                  setAggregateTableId('');
+                  setAggregateColumn('');
+                  setAggregateAlias('');
+                }
+              }
+            }}
+            disabled={!aggregateTableId || (aggregateFunction !== 'COUNT' && !aggregateColumn)}
             variant="contained"
             size="small"
           >

@@ -3,7 +3,7 @@
  * Suporta MySQL e SQL Server
  */
 
-import type { QueryAST, QueryJoin, SelectField, WhereCondition, GroupByField, OrderByField, CTEClause } from '../../types/query-builder';
+import type { QueryAST, QueryJoin, SelectField, WhereCondition, GroupByField, OrderByField, CTEClause, UnionClause } from '../../types/query-builder';
 
 export type DatabaseDialect = 'mysql' | 'sqlserver';
 
@@ -108,12 +108,21 @@ export function generateSQL(ast: QueryAST, options: GeneratorOptions): string {
     parts.push(generateGroupBy(ast.groupBy, ast, options));
   }
   
-  // ORDER BY
+  // UNIONs (devem vir antes de ORDER BY e LIMIT)
+  if (ast.unions && ast.unions.length > 0) {
+    const sortedUnions = [...ast.unions].sort((a, b) => a.order - b.order);
+    for (const union of sortedUnions) {
+      parts.push(generateUnion(union, options));
+    }
+  }
+  
+  // ORDER BY (aplica-se ao resultado final do UNION)
   if (ast.orderBy && ast.orderBy.fields.length > 0) {
     parts.push(generateOrderBy(ast.orderBy, ast, options));
   }
   
   // LIMIT (MySQL) / TOP (SQL Server - handled in SELECT)
+  // LIMIT aplica-se ao resultado final do UNION
   if (ast.limit && dialect === 'mysql') {
     parts.push(generateLimit(ast.limit));
   }
@@ -160,6 +169,14 @@ function generateSelect(select: SelectField[] | { fields: SelectField[] }, ast: 
   const fieldStrings = fields
     .sort((a, b) => a.order - b.order)
     .map(field => {
+      if (field.type === 'subquery' || field.subquery) {
+        // Subselect no SELECT
+        const subquerySQL = generateSQL(field.subquery!, { ...options, pretty: false });
+        return field.alias 
+          ? `(${subquerySQL}) AS ${escapeIdentifier(field.alias, dialect)}`
+          : `(${subquerySQL})`;
+      }
+      
       if (field.expression) {
         // Campo com expressão customizada
         return field.alias 
@@ -168,7 +185,12 @@ function generateSelect(select: SelectField[] | { fields: SelectField[] }, ast: 
       }
       
       const alias = tableAliases.get(field.tableId) || field.tableId;
-      const columnRef = `${alias}.${escapeIdentifier(field.column, dialect)}`;
+      let columnRef = `${alias}.${escapeIdentifier(field.column, dialect)}`;
+      
+      // Para COUNT(*), não usar alias
+      if (field.column === '*') {
+        columnRef = '*';
+      }
       
       if (field.aggregateFunction) {
         const aggregated = `${field.aggregateFunction}(${columnRef})`;
@@ -372,6 +394,17 @@ function generateLimit(limit: QueryAST['limit']): string {
   }
   
   return `LIMIT ${limit.limit}`;
+}
+
+function generateUnion(union: UnionClause, options: GeneratorOptions): string {
+  const { pretty = true } = options;
+  const newline = pretty ? '\n' : ' ';
+  const indent = pretty ? '  ' : '';
+  
+  // Gerar SQL da query UNION
+  const unionSQL = generateSQL(union.query, { ...options, pretty: false });
+  
+  return `${newline}${union.type}${newline}${indent}(${unionSQL})`;
 }
 
 /**

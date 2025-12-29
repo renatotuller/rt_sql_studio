@@ -38,6 +38,7 @@ interface TableExplorerProps {
   expandedTables: Set<string>;
   onToggleExpand: (tableId: string) => void;
   onColumnDragStart: (tableId: string, column: Column) => void;
+  onDragEnd?: () => void;
   searchTerm: string;
   onSearchChange: (term: string) => void;
   includedTables?: Set<string>;
@@ -50,6 +51,7 @@ export default function TableExplorer({
   expandedTables,
   onToggleExpand,
   onColumnDragStart,
+  onDragEnd,
   searchTerm,
   onSearchChange,
   includedTables = new Set(),
@@ -103,6 +105,31 @@ export default function TableExplorer({
       },
     }));
     e.dataTransfer.effectAllowed = 'copy';
+    
+    // Criar elemento customizado para mostrar apenas o nome da coluna durante o drag
+    const dragImage = document.createElement('div');
+    dragImage.textContent = column.name;
+    dragImage.style.position = 'absolute';
+    dragImage.style.top = '-1000px';
+    dragImage.style.left = '-1000px';
+    dragImage.style.padding = '4px 8px';
+    dragImage.style.backgroundColor = theme.palette.primary.main;
+    dragImage.style.color = theme.palette.primary.contrastText;
+    dragImage.style.borderRadius = '4px';
+    dragImage.style.fontSize = '0.75rem';
+    dragImage.style.fontWeight = '500';
+    dragImage.style.whiteSpace = 'nowrap';
+    dragImage.style.boxShadow = '0 2px 8px rgba(0,0,0,0.2)';
+    document.body.appendChild(dragImage);
+    
+    // Definir a imagem de drag
+    e.dataTransfer.setDragImage(dragImage, dragImage.offsetWidth / 2, dragImage.offsetHeight / 2);
+    
+    // Remover o elemento após um pequeno delay
+    setTimeout(() => {
+      document.body.removeChild(dragImage);
+    }, 0);
+    
     onColumnDragStart(tableId, column);
   };
 
@@ -291,6 +318,7 @@ export default function TableExplorer({
                           key={column.name}
                           draggable
                           onDragStart={(e) => handleDragStart(e, node.id, column)}
+                          onDragEnd={onDragEnd}
                           sx={{
                             px: 1,
                             py: 0.25,
