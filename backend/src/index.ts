@@ -8,6 +8,7 @@ import schemaRouter from './routes/schema.js';
 import monitoringRouter from './routes/monitoring.js';
 import openaiRouter from './routes/openai.js';
 import uiRouter from './routes/ui.js';
+import queryRouter from './routes/query.js';
 import { handleMonitoring, cleanupMonitoring } from './ws/monitoring-handler.js';
 import { ConnectionManager } from './db/connection-manager.js';
 import { connectionStorage } from './storage/connections.js';
@@ -42,6 +43,7 @@ app.use('/api/schema', schemaRouter);
 app.use('/api/monitoring', monitoringRouter);
 app.use('/api/openai', openaiRouter);
 app.use('/api/ui', uiRouter);
+app.use('/api/query', queryRouter);
 
 // WebSocket Server
 const server = createServer(app);
@@ -122,6 +124,7 @@ async function startServer() {
       console.log(`      - POST /api/connections`);
       console.log(`      - GET  /api/schema/:connId`);
       console.log(`      - GET  /api/schema/:connId/graph`);
+      console.log(`      - POST /api/query/:connId/execute`);
       console.log(`      - GET  /api/openai/config`);
       console.log(`      - POST /api/openai/config`);
       console.log(`      - POST /api/openai/generate-sql`);
