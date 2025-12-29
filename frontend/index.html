@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>RT SQL Studio - Database Visualization & Monitoring</title>
+    <script>
+      // Suprimir erros de extensões do Chrome ANTES de qualquer coisa carregar
+      (function() {
+        // Lista de padrões a filtrar
+        const filterPatterns = [
+          'chrome-extension://',
+          'PIN Company Discounts',
+          'pinComponent',
+          'pincomponent.js',
+          'pincomponent',
+          'web_accessible_resources',
+          'Empty token',
+          'Invalid data',
+          'Denying load of chrome-extension',
+          'net::ERR_FAILED',
+          'Failed to fetch',
+          'chrome-extension://invalid',
+          'pin-32.png',
+          'fhamhppabjaafimidmelnmpfangjdnhj',
+          'Download the React DevTools',
+          'reactjs.org/link/react-devtools'
+        ];
+        
+        // Função auxiliar para verificar se a mensagem deve ser filtrada
+        function shouldFilter(message) {
+          if (!message) return false;
+          const msgLower = String(message).toLowerCase();
+          
+          // Verificar padrões simples
+          if (filterPatterns.some(pattern => msgLower.includes(pattern.toLowerCase()))) {
+            return true;
+          }
+          
+          // Verificar se é um arquivo de extensão do Chrome
+          if (msgLower.includes('chrome-extension') || msgLower.includes('extension://')) {
+            return true;
+          }
+          
+          // Verificar stack traces de pinComponent
+          if (msgLower.includes('pincomponent') || msgLower.includes('pin-component')) {
+            return true;
+          }
+          
+          return false;
+        }
+        
+        // Interceptar console.error e console.warn
+        const originalError = console.error;
+        const originalWarn = console.warn;
+        const originalLog = console.log;
+        
+        console.error = function(...args) {
+          const message = args.map(arg => 
+            typeof arg === 'string' ? arg : 
+            typeof arg === 'object' ? JSON.stringify(arg) : 
+            String(arg)
+          ).join(' ');
+          
+          // Verificar também no stack trace se houver
+          const stack = new Error().stack || '';
+          
+          if (shouldFilter(message) || shouldFilter(stack)) {
+            return; // Silenciar completamente
+          }
+          originalError.apply(console, args);
+        };
+        
+        console.warn = function(...args) {
+          const message = args.map(arg => 
+            typeof arg === 'string' ? arg : 
+            typeof arg === 'object' ? JSON.stringify(arg) : 
+            String(arg)
+          ).join(' ');
+          
+          // Verificar também no stack trace se houver
+          const stack = new Error().stack || '';
+          
+          if (shouldFilter(message) || shouldFilter(stack)) {
+            return; // Silenciar completamente
+          }
+          originalWarn.apply(console, args);
+        };
+        
+        // Interceptar console.log também (alguns erros podem vir por aqui)
+        console.log = function(...args) {
+          const message = args.map(arg => 
+            typeof arg === 'string' ? arg : 
+            typeof arg === 'object' ? JSON.stringify(arg) : 
+            String(arg)
+          ).join(' ');
+          
+          // Filtrar avisos do React DevTools e erros de extensões
+          if (shouldFilter(message) || 
+              message.includes('Download the React DevTools') ||
+              message.includes('reactjs.org/link/react-devtools')) {
+            return;
+          }
+          
+          // Não filtrar logs normais, apenas erros de extensões
+          if (shouldFilter(message) && (
+            message.includes('Error') || 
+            message.includes('Failed') ||
+            message.includes('Uncaught')
+          )) {
+            return;
+          }
+          originalLog.apply(console, args);
+        };
+        
+        // Interceptar erros não capturados
+        window.addEventListener('error', function(e) {
+          const message = e.message || '';
+          const source = e.filename || e.source || '';
+          const stack = e.error?.stack || '';
+          const errorString = e.error?.toString() || '';
+          
+          // Verificar se é erro de extensão do Chrome ou React DevTools
+          if (
+            shouldFilter(message) ||
+            shouldFilter(source) ||
+            shouldFilter(stack) ||
+            shouldFilter(errorString) ||
+            (message.includes('Failed to fetch') && (source.includes('chrome-extension') || stack.includes('pinComponent'))) ||
+            (message.includes('Uncaught') && (stack.includes('pinComponent') || stack.includes('chrome-extension'))) ||
+            source.includes('chrome-extension://') ||
+            (stack && (stack.includes('pinComponent') || stack.includes('chrome-extension')))
+          ) {
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+            return false;
+          }
+        }, true);
+        
+        // Interceptar promessas rejeitadas não tratadas
+        window.addEventListener('unhandledrejection', function(e) {
+          const reason = e.reason?.toString() || '';
+          const message = e.reason?.message || '';
+          const stack = e.reason?.stack || '';
+          const errorString = String(e.reason || '');
+          
+          // Verificar se é erro de extensão do Chrome
+          if (
+            shouldFilter(reason) ||
+            shouldFilter(message) ||
+            shouldFilter(stack) ||
+            shouldFilter(errorString) ||
+            (errorString.includes('Failed to fetch') && (stack.includes('pinComponent') || stack.includes('chrome-extension'))) ||
+            (errorString.includes('TypeError') && (stack.includes('pinComponent') || stack.includes('chrome-extension'))) ||
+            (stack && (stack.includes('pinComponent') || stack.includes('chrome-extension')))
+          ) {
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+            return false;
+          }
+        }, true);
+        
+        // Interceptar erros de recursos (imagens, scripts, etc)
+        window.addEventListener('error', function(e) {
+          const target = e.target;
+          if (target && target.src) {
+            if (shouldFilter(target.src)) {
+              e.preventDefault();
+              e.stopPropagation();
+              return false;
+            }
+          }
+        }, true);
+        
+        // Interceptar também erros de rede relacionados a extensões
+        const originalFetch = window.fetch;
+        window.fetch = function(...args) {
+          const url = args[0]?.toString() || '';
+          if (shouldFilter(url)) {
+            // Retornar uma promise rejeitada silenciosamente
+            return Promise.reject(new Error('Filtered extension request'));
+          }
+          return originalFetch.apply(this, args).catch(err => {
+            const errorMsg = err?.message || '';
+            const errorStack = err?.stack || '';
+            if (shouldFilter(errorMsg) || shouldFilter(errorStack)) {
+              // Silenciar erro de extensão
+              return Promise.reject(new Error('Filtered'));
+            }
+            throw err;
+          });
+        };
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+

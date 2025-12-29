@@ -1,0 +1,15 @@
+# Diretório de dados
+
+Este diretório contém os arquivos de persistência do SQL Spy.
+
+## Arquivos
+
+- `connections.json`: Armazena as configurações de conexão com bancos de dados (senhas incluídas, não versionar!)
+
+
+
+
+
+
+
+
