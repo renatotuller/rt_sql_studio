@@ -280,13 +280,16 @@ export default function TableExplorer({
                             primaryTypographyProps={{
                               variant: 'body2',
                               noWrap: true,
+                              sx: {
+                                fontSize: '0.7rem',
+                              },
                             }}
                           />
                           <Typography
                             variant="caption"
                             sx={{
                               color: 'text.secondary',
-                              fontSize: '0.6875rem',
+                              fontSize: '0.625rem',
                               maxWidth: 80,
                               noWrap: true,
                             }}

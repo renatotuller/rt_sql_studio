@@ -25,7 +25,6 @@ import {
   Refresh as RefreshIcon,
 } from '@mui/icons-material';
 import { connectionsApi, schemaApi, type DatabaseConnection, type SchemaStats } from '../api/client';
-import PageLayout from '../components/PageLayout';
 
 interface ConnectionWithStats extends DatabaseConnection {
   stats?: SchemaStats;
@@ -48,20 +47,10 @@ export default function Dashboard() {
 
   const loadConnections = async () => {
     try {
+      setLoading(true);
       const response = await connectionsApi.getAll();
-      const connectionsData = response.data;
+      const connectionsData = response.data || [];
       setTotalConnections(connectionsData.length);
-      
-      if (location.pathname === '/') {
-        if (connectionsData.length > 0) {
-          setLoading(false);
-        } else {
-          navigate('/connections', { replace: true });
-          return;
-        }
-      } else {
-        setLoading(false);
-      }
 
       const connectionsWithStats = await Promise.all(
         connectionsData.map(async (conn) => {
@@ -83,6 +72,9 @@ export default function Dashboard() {
       setTotalViews(views);
     } catch (error) {
       console.error('Erro ao carregar conexões:', error);
+      setConnections([]);
+      setTotalConnections(0);
+    } finally {
       setLoading(false);
     }
   };
@@ -112,11 +104,9 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <PageLayout title="Dashboard">
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
-          <CircularProgress />
-        </Box>
-      </PageLayout>
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+        <CircularProgress />
+      </Box>
     );
   }
 
@@ -152,49 +142,33 @@ export default function Dashboard() {
   ];
 
   return (
-    <PageLayout 
-      title="Dashboard"
-      actions={
-        <Button
-          component={Link}
-          to="/connections"
-          variant="contained"
-          size="small"
-          startIcon={<AddIcon />}
-          sx={{
-            textTransform: 'none',
-            borderRadius: 2,
-          }}
-        >
-          Nova Conexão
-        </Button>
-      }
-      fullscreen
+    <Box 
+      sx={{ 
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
+        overflow: 'hidden',
+        px: 3,
+        pt: 2,
+      }}
     >
-      <Box 
-        sx={{ 
-          display: 'flex',
-          flexDirection: 'column',
-          height: '100%',
-          overflow: 'hidden',
-        }}
-      >
         {/* Header fixo */}
         <Box sx={{ flexShrink: 0, mb: 2 }}>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Gerencie suas conexões de banco de dados e visualize schemas
+            Dashboard
           </Typography>
 
           {/* Cards de Estatísticas Gerais */}
-          <Grid container spacing={2}>
+          <Grid container spacing={2} sx={{ width: '100%' }}>
             {statCards.map((stat, index) => (
-              <Grid item xs={12} sm={6} md={3} key={index}>
+              <Grid item xs={12} sm={6} md={3} key={index} sx={{ display: 'flex', flex: 1 }}>
                 <Card
                   sx={{
                     background: `linear-gradient(135deg, ${stat.bgColor} 0%, ${alpha(stat.bgColor, 0.5)} 100%)`,
                     border: `1px solid ${alpha(stat.color, 0.2)}`,
                     borderRadius: 3,
                     height: '100%',
+                    width: '100%',
                   }}
                 >
                   <CardContent>
@@ -461,7 +435,6 @@ export default function Dashboard() {
           </Grid>
           )}
         </Box>
-      </Box>
-    </PageLayout>
+    </Box>
   );
 }

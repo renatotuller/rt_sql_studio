@@ -25,9 +25,9 @@ import {
 import {
   Timeline as ActivityIcon,
   Refresh as RefreshIcon,
+  ArrowBack as ArrowBackIcon,
 } from '@mui/icons-material';
 import { monitoringApi, connectionsApi, type ActiveQuery } from '../api/client';
-import PageLayout from '../components/PageLayout';
 
 export default function Monitoring() {
   const theme = useTheme();
@@ -193,10 +193,40 @@ export default function Monitoring() {
     : 0;
 
   return (
-    <PageLayout 
-      title={`Monitoramento: ${connectionName}`}
-      backUrl="/connections"
-      actions={
+    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      {/* Barra superior com controles */}
+      <Box 
+        sx={{ 
+          flexShrink: 0, 
+          px: 2, 
+          py: 0.5, 
+          borderBottom: 1, 
+          borderColor: 'divider',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          minHeight: 'auto',
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          <IconButton
+            onClick={() => navigate('/connections')}
+            size="small"
+            sx={{
+              p: 0.5,
+              color: 'text.secondary',
+              '&:hover': {
+                color: 'text.primary',
+                bgcolor: 'action.hover',
+              },
+            }}
+          >
+            <ArrowBackIcon fontSize="small" />
+          </IconButton>
+          <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.8125rem', lineHeight: 1.2 }}>
+            Monitoramento: {connectionName}
+          </Typography>
+        </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <FormControlLabel
             control={
@@ -236,9 +266,11 @@ export default function Monitoring() {
             Atualizar
           </Button>
         </Box>
-      }
-    >
-      <Grid container spacing={2} sx={{ mb: 3 }}>
+      </Box>
+      
+      {/* Conteúdo com scroll */}
+      <Box sx={{ flexGrow: 1, overflow: 'auto', p: 2 }}>
+        <Grid container spacing={2} sx={{ mb: 3 }}>
         <Grid item xs={12} md={4}>
           <Card>
             <CardContent>
@@ -381,6 +413,7 @@ export default function Monitoring() {
           )}
         </CardContent>
       </Card>
-    </PageLayout>
+      </Box>
+    </Box>
   );
 }

@@ -83,6 +83,7 @@ export default function QueryBuilder() {
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [resultLimit, setResultLimit] = useState(100);
   const [refreshing, setRefreshing] = useState(false);
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
   const exportMenuRef = useRef<HTMLDivElement>(null);
   
   // Pending column para adicionar após JOIN ser criado
@@ -1094,7 +1095,49 @@ export default function QueryBuilder() {
               + Personalizada
             </Button>
           </Box>
-          <Box sx={{ flex: 1, overflow: 'hidden' }}>
+          <Box 
+            sx={{ 
+              flex: 1, 
+              overflow: 'hidden',
+              position: 'relative',
+              border: isDraggingOver ? 2 : 0,
+              borderColor: isDraggingOver ? 'primary.main' : 'transparent',
+              borderStyle: isDraggingOver ? 'dashed' : 'solid',
+              borderRadius: 1,
+              bgcolor: isDraggingOver ? alpha(theme.palette.primary.main, 0.04) : 'transparent',
+              transition: 'all 0.2s',
+            }}
+            onDragEnter={(e) => {
+              e.preventDefault();
+              // Verificar se é uma coluna sendo arrastada pelos tipos de dados
+              const types = Array.from(e.dataTransfer.types);
+              if (types.includes('application/json')) {
+                setIsDraggingOver(true);
+              }
+            }}
+            onDragOver={(e) => {
+              e.preventDefault();
+              e.dataTransfer.dropEffect = 'copy';
+            }}
+            onDragLeave={(e) => {
+              // Só remove o estado se realmente saiu da área (não apenas de um filho)
+              if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                setIsDraggingOver(false);
+              }
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              setIsDraggingOver(false);
+              try {
+                const data = JSON.parse(e.dataTransfer.getData('application/json'));
+                if (data.type === 'column' && data.tableId && data.column?.name) {
+                  handleColumnDrop(data.tableId, data.column.name);
+                }
+              } catch (error) {
+                console.error('Erro ao processar drop:', error);
+              }
+            }}
+          >
             <SelectList
               fields={ast.select.fields}
               onReorder={reorderColumns}
@@ -1102,6 +1145,33 @@ export default function QueryBuilder() {
               onEditAlias={updateColumnAlias}
               tableAliases={tableAliases}
             />
+            {isDraggingOver && ast.select.fields.length === 0 && (
+              <Box
+                sx={{
+                  position: 'absolute',
+                  inset: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  pointerEvents: 'none',
+                  zIndex: 10,
+                }}
+              >
+                <Paper
+                  elevation={4}
+                  sx={{
+                    px: 2,
+                    py: 1,
+                    bgcolor: 'primary.main',
+                    color: 'primary.contrastText',
+                  }}
+                >
+                  <Typography variant="body2" fontWeight={500}>
+                    Solte aqui para adicionar ao SELECT
+                  </Typography>
+                </Paper>
+              </Box>
+            )}
           </Box>
           
           {/* Bottom Bar - Clause Buttons */}

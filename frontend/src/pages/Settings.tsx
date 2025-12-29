@@ -35,7 +35,6 @@ import {
   Info as InfoIcon,
 } from '@mui/icons-material';
 import { openaiApi, uiApi, type OpenAIConfig } from '../api/client';
-import PageLayout from '../components/PageLayout';
 
 export default function Settings() {
   const theme = useTheme();
@@ -203,9 +202,7 @@ export default function Settings() {
   };
 
   return (
-    <PageLayout 
-      title="Configurações"
-    >
+    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'auto', p: 2 }}>
       <Box sx={{ mb: 3 }}>
         <Typography variant="body2" color="text.secondary">
           Configure a integração com a API da OpenAI para gerar queries SQL
@@ -546,7 +543,7 @@ export default function Settings() {
           </Button>
         </DialogActions>
       </Dialog>
-    </PageLayout>
+    </Box>
   );
 }
 

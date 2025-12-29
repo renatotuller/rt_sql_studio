@@ -2,7 +2,14 @@
  * Botões para abrir os editores de cláusulas SQL (WHERE, GROUP BY, ORDER BY, etc.)
  */
 
-import { Filter, Layers, ArrowUpDown, Hash, Link, Settings2 } from 'lucide-react';
+import { Box, Button, Chip, IconButton, useTheme, alpha } from '@mui/material';
+import { 
+  Filter as FilterIcon, 
+  Layers as LayersIcon, 
+  ArrowUpDown as ArrowUpDownIcon, 
+  Link as LinkIcon, 
+  Settings as SettingsIcon 
+} from '@mui/icons-material';
 
 interface QueryClauseButtonsProps {
   whereCount: number;
@@ -27,104 +34,128 @@ export default function QueryClauseButtons({
   onOpenJoins,
   onOpenSettings,
 }: QueryClauseButtonsProps) {
+  const theme = useTheme();
+  
   const buttons = [
     {
-      icon: Link,
+      icon: LinkIcon,
       label: 'JOIN',
       count: joinsCount,
       onClick: onOpenJoins,
-      color: 'purple',
+      color: 'purple' as const,
     },
     {
-      icon: Filter,
+      icon: FilterIcon,
       label: 'WHERE',
       count: whereCount,
       onClick: onOpenWhere,
-      color: 'blue',
+      color: 'blue' as const,
     },
     {
-      icon: Layers,
+      icon: LayersIcon,
       label: 'GROUP BY',
       count: groupByCount,
       onClick: onOpenGroupBy,
-      color: 'green',
+      color: 'green' as const,
     },
     {
-      icon: ArrowUpDown,
+      icon: ArrowUpDownIcon,
       label: 'ORDER BY',
       count: orderByCount,
       onClick: onOpenOrderBy,
-      color: 'amber',
+      color: 'amber' as const,
     },
   ];
 
-  const getColorClasses = (color: string, hasItems: boolean) => {
-    const colors: Record<string, { bg: string; text: string; hover: string; badge: string }> = {
+  const getColorStyles = (color: 'purple' | 'blue' | 'green' | 'amber', hasItems: boolean) => {
+    const colorMap = {
       purple: {
-        bg: hasItems ? 'bg-purple-100 dark:bg-purple-900/30' : 'bg-gray-100 dark:bg-gray-800',
-        text: hasItems ? 'text-purple-700 dark:text-purple-300' : 'text-gray-600 dark:text-gray-400',
-        hover: 'hover:bg-purple-200 dark:hover:bg-purple-900/50',
-        badge: 'bg-purple-600 text-white',
+        bg: hasItems ? alpha(theme.palette.secondary.main, 0.1) : theme.palette.action.hover,
+        text: hasItems ? theme.palette.secondary.main : theme.palette.text.secondary,
+        badge: theme.palette.secondary.main,
       },
       blue: {
-        bg: hasItems ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-gray-100 dark:bg-gray-800',
-        text: hasItems ? 'text-blue-700 dark:text-blue-300' : 'text-gray-600 dark:text-gray-400',
-        hover: 'hover:bg-blue-200 dark:hover:bg-blue-900/50',
-        badge: 'bg-blue-600 text-white',
+        bg: hasItems ? alpha(theme.palette.primary.main, 0.1) : theme.palette.action.hover,
+        text: hasItems ? theme.palette.primary.main : theme.palette.text.secondary,
+        badge: theme.palette.primary.main,
       },
       green: {
-        bg: hasItems ? 'bg-green-100 dark:bg-green-900/30' : 'bg-gray-100 dark:bg-gray-800',
-        text: hasItems ? 'text-green-700 dark:text-green-300' : 'text-gray-600 dark:text-gray-400',
-        hover: 'hover:bg-green-200 dark:hover:bg-green-900/50',
-        badge: 'bg-green-600 text-white',
+        bg: hasItems ? alpha(theme.palette.success.main, 0.1) : theme.palette.action.hover,
+        text: hasItems ? theme.palette.success.main : theme.palette.text.secondary,
+        badge: theme.palette.success.main,
       },
       amber: {
-        bg: hasItems ? 'bg-amber-100 dark:bg-amber-900/30' : 'bg-gray-100 dark:bg-gray-800',
-        text: hasItems ? 'text-amber-700 dark:text-amber-300' : 'text-gray-600 dark:text-gray-400',
-        hover: 'hover:bg-amber-200 dark:hover:bg-amber-900/50',
-        badge: 'bg-amber-600 text-white',
+        bg: hasItems ? alpha(theme.palette.warning.main, 0.1) : theme.palette.action.hover,
+        text: hasItems ? theme.palette.warning.main : theme.palette.text.secondary,
+        badge: theme.palette.warning.main,
       },
     };
-    return colors[color] || colors.blue;
+    return colorMap[color];
   };
 
   return (
-    <div className="flex items-center gap-2 flex-wrap">
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
       {buttons.map(({ icon: Icon, label, count, onClick, color }) => {
         const hasItems = count > 0;
-        const colors = getColorClasses(color, hasItems);
+        const colors = getColorStyles(color, hasItems);
         
         return (
-          <button
+          <Button
             key={label}
             onClick={onClick}
-            className={`
-              flex items-center gap-1.5 px-3 py-1.5 rounded-lg
-              text-sm font-medium transition-colors
-              ${colors.bg} ${colors.text} ${colors.hover}
-            `}
+            startIcon={<Icon sx={{ fontSize: 16 }} />}
+            endIcon={hasItems ? (
+              <Chip
+                label={count}
+                size="small"
+                sx={{
+                  height: 18,
+                  minWidth: 18,
+                  fontSize: '0.65rem',
+                  bgcolor: colors.badge,
+                  color: 'white',
+                  '& .MuiChip-label': {
+                    px: 0.75,
+                  },
+                }}
+              />
+            ) : undefined}
+            sx={{
+              px: 1.5,
+              py: 0.75,
+              borderRadius: 2,
+              fontSize: '0.8125rem',
+              fontWeight: 500,
+              textTransform: 'none',
+              bgcolor: colors.bg,
+              color: colors.text,
+              '&:hover': {
+                bgcolor: alpha(colors.badge, 0.15),
+              },
+            }}
           >
-            <Icon className="h-4 w-4" />
-            <span>{label}</span>
-            {hasItems && (
-              <span className={`px-1.5 py-0.5 text-xs rounded-full ${colors.badge}`}>
-                {count}
-              </span>
-            )}
-          </button>
+            {label}
+          </Button>
         );
       })}
       
       {onOpenSettings && (
-        <button
+        <IconButton
           onClick={onOpenSettings}
-          className="p-2 rounded-lg text-gray-500 hover:text-gray-700 dark:text-gray-400 
-                   dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          size="small"
+          sx={{
+            p: 1,
+            color: 'text.secondary',
+            '&:hover': {
+              color: 'text.primary',
+              bgcolor: 'action.hover',
+            },
+          }}
           title="Configurações"
         >
-          <Settings2 className="h-4 w-4" />
-        </button>
+          <SettingsIcon sx={{ fontSize: 16 }} />
+        </IconButton>
       )}
-    </div>
+    </Box>
   );
 }

@@ -2,15 +2,11 @@ import { ReactNode, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   Box,
-  Drawer,
   AppBar,
   Toolbar,
-  List,
   Typography,
   Divider,
   IconButton,
-  ListItem,
-  ListItemButton,
   ListItemIcon,
   ListItemText,
   useTheme,
@@ -22,15 +18,12 @@ import {
   Button,
 } from '@mui/material';
 import {
-  Menu as MenuIcon,
-  ChevronLeft as ChevronLeftIcon,
   Dashboard as DashboardIcon,
   Storage as StorageIcon,
   Settings as SettingsIcon,
   Logout as LogoutIcon,
   DarkMode as DarkModeIcon,
   LightMode as LightModeIcon,
-  Book as BookIcon,
   Help as HelpIcon,
   Visibility as VisibilityIcon,
   List as ListIcon,
@@ -38,9 +31,6 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { useThemeMode } from '../contexts/ThemeContext';
-import ViewSwitcher from './ViewSwitcher';
-
-const drawerWidth = 240;
 
 interface LayoutProps {
   children: ReactNode;
@@ -56,7 +46,6 @@ export default function Layout({ children }: LayoutProps) {
   const isQueryBuilder = location.pathname.includes('/query-builder');
   const isSchemaPage = location.pathname.includes('/schema/');
   const connId = location.pathname.match(/\/schema\/([^\/]+)/)?.[1];
-  const [open, setOpen] = useState(!isQueryBuilder);
   
   // Determinar a view atual para o ViewSwitcher
   const getCurrentView = (): 'standard' | 'advanced' | 'analyzer' | 'table' | 'query-builder' | 'ai-query' => {
@@ -69,10 +58,6 @@ export default function Layout({ children }: LayoutProps) {
   };
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [viewMenuAnchor, setViewMenuAnchor] = useState<null | HTMLElement>(null);
-
-  const handleDrawerToggle = () => {
-    setOpen(!open);
-  };
 
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -100,13 +85,6 @@ export default function Layout({ children }: LayoutProps) {
     handleMenuClose();
   };
 
-  const menuItems = [
-    { text: 'Dashboard', icon: <DashboardIcon />, path: '/' },
-    { text: 'Conexões', icon: <StorageIcon />, path: '/connections' },
-    { text: 'Configurações', icon: <SettingsIcon />, path: '/settings' },
-    { text: 'Ajuda', icon: <HelpIcon />, path: '/wiki' },
-  ];
-
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh' }}>
       <AppBar
@@ -119,17 +97,6 @@ export default function Layout({ children }: LayoutProps) {
         }}
       >
         <Toolbar>
-          {!isQueryBuilder && (
-            <IconButton
-              color="inherit"
-              aria-label="toggle drawer"
-              onClick={handleDrawerToggle}
-              edge="start"
-              sx={{ mr: 2 }}
-            >
-              {open ? <ChevronLeftIcon /> : <MenuIcon />}
-            </IconButton>
-          )}
           <Box
             component="img"
             src="/logo.png"
@@ -194,30 +161,30 @@ export default function Layout({ children }: LayoutProps) {
           
           <Box sx={{ flexGrow: 1 }} />
           
-          {/* Menu de views para páginas de schema */}
-          {isSchemaPage && (
-            <>
-              <Tooltip title="Opções de visualização">
-                <IconButton
-                  onClick={handleViewMenuOpen}
-                  sx={{
-                    color: 'text.secondary',
-                    mr: 1,
-                    '&:hover': {
-                      backgroundColor: alpha(theme.palette.primary.main, 0.08),
-                    },
-                  }}
-                >
-                  <VisibilityIcon />
-                </IconButton>
-              </Tooltip>
-              <Menu
-                anchorEl={viewMenuAnchor}
-                open={Boolean(viewMenuAnchor)}
-                onClose={handleViewMenuClose}
-                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-                transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-              >
+          {/* Menu de views - sempre visível */}
+          <Tooltip title="Opções de visualização">
+            <IconButton
+              onClick={handleViewMenuOpen}
+              sx={{
+                color: 'text.secondary',
+                mr: 1,
+                '&:hover': {
+                  backgroundColor: alpha(theme.palette.primary.main, 0.08),
+                },
+              }}
+            >
+              <VisibilityIcon />
+            </IconButton>
+          </Tooltip>
+          <Menu
+            anchorEl={viewMenuAnchor}
+            open={Boolean(viewMenuAnchor)}
+            onClose={handleViewMenuClose}
+            anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+            transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+          >
+            {isSchemaPage && connId ? (
+              <>
                 <MenuItem
                   onClick={() => {
                     navigate(`/schema/${connId}`);
@@ -278,9 +245,17 @@ export default function Layout({ children }: LayoutProps) {
                   </ListItemIcon>
                   <ListItemText>Query Builder</ListItemText>
                 </MenuItem>
-              </Menu>
-            </>
-          )}
+              </>
+            ) : (
+              <MenuItem disabled>
+                <ListItemText>
+                  <Typography variant="body2" color="text.secondary">
+                    Selecione uma conexão para ver as opções de visualização
+                  </Typography>
+                </ListItemText>
+              </MenuItem>
+            )}
+          </Menu>
           
           <Tooltip title={mode === 'dark' ? 'Modo Claro' : 'Modo Escuro'}>
             <IconButton color="inherit" onClick={toggleColorMode} sx={{ mr: 1 }}>
@@ -339,100 +314,52 @@ export default function Layout({ children }: LayoutProps) {
           </Menu>
         </Toolbar>
       </AppBar>
-      {open && !isQueryBuilder && (
-        <Drawer
-          variant="permanent"
-          sx={{
-            width: drawerWidth,
-            flexShrink: 0,
-            '& .MuiDrawer-paper': {
-              width: drawerWidth,
-              boxSizing: 'border-box',
-              overflowX: 'hidden',
-              backgroundColor: theme.palette.background.paper,
-              borderRight: `1px solid ${theme.palette.divider}`,
-            },
-          }}
-        >
-          <Box 
-            sx={{ 
-              overflow: 'auto',
-              height: '100%',
-              pt: 8, // Espaço para o AppBar
-            }}
-          >
-            <List>
-              {menuItems.map((item) => (
-                <ListItem key={item.text} disablePadding sx={{ display: 'block' }}>
-                  <ListItemButton
-                    component={Link}
-                    to={item.path}
-                    selected={location.pathname === item.path}
-                    sx={{
-                      minHeight: 48,
-                      justifyContent: 'initial',
-                      px: 2.5,
-                      mx: 1,
-                      my: 0.5,
-                      borderRadius: 2,
-                      '&.Mui-selected': {
-                        backgroundColor: alpha(theme.palette.primary.main, 0.12),
-                        color: theme.palette.primary.main,
-                        '& .MuiListItemIcon-root': {
-                          color: theme.palette.primary.main,
-                        },
-                      },
-                      '&:hover': {
-                        backgroundColor: alpha(theme.palette.primary.main, 0.08),
-                      },
-                    }}
-                  >
-                    <ListItemIcon
-                      sx={{
-                        minWidth: 0,
-                        mr: 2,
-                        justifyContent: 'center',
-                      }}
-                    >
-                      {item.icon}
-                    </ListItemIcon>
-                    <ListItemText
-                      primary={item.text}
-                      sx={{
-                        '& .MuiTypography-root': {
-                          fontWeight: location.pathname === item.path ? 600 : 400,
-                        },
-                      }}
-                    />
-                  </ListItemButton>
-                </ListItem>
-              ))}
-            </List>
-          </Box>
-        </Drawer>
-      )}
       <Box
         component="main"
         sx={{
           flexGrow: 1,
-          p: isQueryBuilder ? 0 : 3,
+          p: 0,
           backgroundColor: theme.palette.mode === 'dark' ? '#121212' : '#f5f5f5',
-          height: isQueryBuilder ? 'calc(100vh - 64px)' : '100vh',
+          height: 'calc(100vh - 64px - 20px)',
           overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',
-          marginLeft: (open && !isQueryBuilder) ? `${drawerWidth}px` : 0,
-          marginTop: isQueryBuilder ? '64px' : 0,
-          transition: theme.transitions.create(['margin'], {
-            easing: theme.transitions.easing.sharp,
-            duration: theme.transitions.duration.enteringScreen,
-          }),
+          marginTop: '64px',
+          marginBottom: '20px',
         }}
       >
-        {!isQueryBuilder && <Toolbar />}
         <Box sx={{ flexGrow: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
           {children}
         </Box>
+      </Box>
+      {/* Footer fixo na parte inferior */}
+      <Box
+        component="footer"
+        sx={{
+          position: 'fixed',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          height: 20,
+          backgroundColor: theme.palette.mode === 'dark' ? '#1e1e1e' : '#ffffff',
+          borderTop: `1px solid ${theme.palette.divider}`,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: theme.zIndex.drawer,
+          boxShadow: `0 -1px 3px ${alpha(theme.palette.common.black, 0.12)}`,
+        }}
+      >
+        <Typography
+          variant="body2"
+          sx={{
+            color: theme.palette.text.secondary,
+            fontSize: '0.65rem',
+            fontWeight: 400,
+          }}
+        >
+          RT SQL Studio - {new Date().getFullYear()} - Renato Tuller - www.renatotuller.com.br
+        </Typography>
       </Box>
     </Box>
   );

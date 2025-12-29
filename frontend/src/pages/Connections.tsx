@@ -64,10 +64,12 @@ export default function Connections() {
 
   const loadConnections = async () => {
     try {
+      setLoading(true);
       const response = await connectionsApi.getAll();
-      setConnections(response.data);
+      setConnections(response.data || []);
     } catch (error) {
       console.error('Erro ao carregar conexões:', error);
+      setConnections([]);
     } finally {
       setLoading(false);
     }
@@ -146,18 +148,29 @@ export default function Connections() {
 
   if (loading) {
     return (
-      <PageLayout title="Conexões">
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '400px' }}>
-          <CircularProgress />
-        </Box>
-      </PageLayout>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+        <CircularProgress />
+      </Box>
     );
   }
 
   return (
-    <PageLayout 
-      title="Conexões"
-      actions={
+    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      {/* Conteúdo com scroll */}
+      <Box sx={{ flexGrow: 1, overflow: 'auto', p: 2 }}>
+      <Box 
+        sx={{ 
+          mb: 3, 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: 2,
+        }}
+      >
+        <Typography variant="body2" color="text.secondary">
+          Gerencie suas conexões de banco de dados
+        </Typography>
         <Button
           variant="contained"
           size="small"
@@ -170,12 +183,6 @@ export default function Connections() {
         >
           Nova Conexão
         </Button>
-      }
-    >
-      <Box sx={{ mb: 3 }}>
-        <Typography variant="body2" color="text.secondary">
-          Gerencie suas conexões de banco de dados
-        </Typography>
       </Box>
 
       {showForm && (
@@ -404,7 +411,8 @@ export default function Connections() {
           )}
         </CardContent>
       </Card>
-    </PageLayout>
+      </Box>
+    </Box>
   );
 }
 

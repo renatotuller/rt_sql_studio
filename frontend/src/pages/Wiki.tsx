@@ -25,7 +25,6 @@ import {
   Search as SearchIcon,
   OpenInNew as ExternalLinkIcon,
 } from '@mui/icons-material';
-import PageLayout from '../components/PageLayout';
 
 interface WikiSection {
   id: string;
@@ -398,8 +397,8 @@ export default function Wiki() {
   };
 
   return (
-    <PageLayout title="Wiki - Documentação">
-      <Box sx={{ display: 'flex', gap: 3, height: 'calc(100vh - 180px)' }}>
+    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', p: 2 }}>
+      <Box sx={{ display: 'flex', gap: 3, flexGrow: 1, overflow: 'hidden' }}>
         {/* Sidebar - Índice */}
         <Box sx={{ width: 288, flexShrink: 0, overflowY: 'auto' }}>
           <Paper elevation={1} sx={{ p: 2 }}>
@@ -538,6 +537,6 @@ export default function Wiki() {
           </Paper>
         </Box>
       </Box>
-    </PageLayout>
+    </Box>
   );
 }
