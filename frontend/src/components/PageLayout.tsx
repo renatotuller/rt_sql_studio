@@ -36,39 +36,28 @@ export default function PageLayout({
       <Box 
         sx={{ 
           flexShrink: 0, 
-          px: 2, 
-          py: 0.5, 
+          px: 0.75,
+          py: 0.125,
+          backgroundColor: 'background.paper',
           borderBottom: 1, 
           borderColor: 'divider',
+          boxShadow: 1,
+          zIndex: 50,
+          position: 'sticky',
+          top: 0,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           minHeight: 'auto',
         }}
       >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-          {backUrl && (
-            <IconButton
-              onClick={() => navigate(backUrl)}
-              size="small"
-              sx={{
-                p: 0.5,
-                color: 'text.secondary',
-                '&:hover': {
-                  color: 'text.primary',
-                  bgcolor: 'action.hover',
-                },
-              }}
-            >
-              <ArrowBackIcon fontSize="small" />
-            </IconButton>
-          )}
-          <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.8125rem', lineHeight: 1.2 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, pl: 2 }}>
+          <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.8125rem', lineHeight: 1.2, py: 0.5 }}>
             {title}
           </Typography>
         </Box>
         {actions && (
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, pr: 2 }}>
             {actions}
           </Box>
         )}

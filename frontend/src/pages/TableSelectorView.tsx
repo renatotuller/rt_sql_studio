@@ -52,7 +52,6 @@ import { getLayoutedElements, type LayoutType } from '../utils/layout';
 import CascadingTableSelector from '../components/CascadingTableSelector';
 import RelationshipDetailsDialog from '../components/RelationshipDetailsDialog';
 import InformativeLoading from '../components/InformativeLoading';
-import ViewSwitcher from '../components/ViewSwitcher';
 
 const nodeTypes = {
   databaseSchema: DatabaseSchemaNode,
@@ -518,37 +517,27 @@ function TableSelectorViewContent() {
       <Box 
         sx={{ 
           flexShrink: 0, 
-          px: 2, 
-          py: 0.5, 
+          px: 0.75,
+          py: 0.125,
+          backgroundColor: 'background.paper',
           borderBottom: 1, 
           borderColor: 'divider',
+          boxShadow: 1,
+          zIndex: 50,
+          position: 'sticky',
+          top: 0,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           minHeight: 'auto',
         }}
       >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-          <IconButton
-            onClick={() => navigate(`/schema/${connId}`)}
-            size="small"
-            sx={{
-              p: 0.5,
-              color: 'text.secondary',
-              '&:hover': {
-                color: 'text.primary',
-                bgcolor: 'action.hover',
-              },
-            }}
-          >
-            <ArrowLeftIcon fontSize="small" />
-          </IconButton>
-          <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.8125rem', lineHeight: 1.2 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, pl: 2 }}>
+          <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.8125rem', lineHeight: 1.2, py: 0.5 }}>
             Seletor de Tabelas: {connectionName}
           </Typography>
         </Box>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'nowrap', overflowX: 'auto' }}>
-          <ViewSwitcher currentView="table" />
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'nowrap', overflowX: 'auto', pr: 2 }}>
           {/* Botão de Snap to Grid (Toggle) */}
           {nodes.length > 0 && (
             <Tooltip title={snapToGrid ? 'Desativar ajuste à grade' : 'Ativar ajuste à grade (arraste os nós para alinhar)'}>
@@ -556,8 +545,8 @@ function TableSelectorViewContent() {
                 onClick={() => setSnapToGrid(!snapToGrid)}
                 variant={snapToGrid ? 'contained' : 'outlined'}
                 size="small"
-                startIcon={<Grid3x3Icon />}
-                sx={{ flexShrink: 0, fontSize: '0.8125rem' }}
+                startIcon={<Grid3x3Icon sx={{ fontSize: '0.75rem' }} />}
+                sx={{ flexShrink: 0, fontSize: '0.75rem', px: 1.5, py: 0.5, minHeight: 32 }}
               >
                 {snapToGrid ? 'Alinhar: ON' : 'Alinhar: OFF'}
               </Button>
@@ -584,28 +573,28 @@ function TableSelectorViewContent() {
                 size="small"
               >
                 <Tooltip title="Layout Hierárquico">
-                  <ToggleButton value="hierarchical" size="small">
-                    <GitBranchIcon fontSize="small" />
+                  <ToggleButton value="hierarchical" size="small" sx={{ p: 0.5 }}>
+                    <GitBranchIcon sx={{ fontSize: '0.75rem' }} />
                   </ToggleButton>
                 </Tooltip>
                 <Tooltip title="Layout Circular">
-                  <ToggleButton value="circular" size="small">
-                    <NetworkIcon fontSize="small" />
+                  <ToggleButton value="circular" size="small" sx={{ p: 0.5 }}>
+                    <NetworkIcon sx={{ fontSize: '0.75rem' }} />
                   </ToggleButton>
                 </Tooltip>
                 <Tooltip title="Layout em Grade">
-                  <ToggleButton value="grid" size="small">
-                    <Grid3x3Icon fontSize="small" />
+                  <ToggleButton value="grid" size="small" sx={{ p: 0.5 }}>
+                    <Grid3x3Icon sx={{ fontSize: '0.75rem' }} />
                   </ToggleButton>
                 </Tooltip>
                 <Tooltip title="Layout de Força">
-                  <ToggleButton value="force" size="small">
-                    <LayoutGridIcon fontSize="small" />
+                  <ToggleButton value="force" size="small" sx={{ p: 0.5 }}>
+                    <LayoutGridIcon sx={{ fontSize: '0.75rem' }} />
                   </ToggleButton>
                 </Tooltip>
                 <Tooltip title="Layout Ortogonal (90 graus)">
-                  <ToggleButton value="orthogonal" size="small">
-                    <BoxesIcon fontSize="small" />
+                  <ToggleButton value="orthogonal" size="small" sx={{ p: 0.5 }}>
+                    <BoxesIcon sx={{ fontSize: '0.75rem' }} />
                   </ToggleButton>
                 </Tooltip>
               </ToggleButtonGroup>
@@ -618,8 +607,8 @@ function TableSelectorViewContent() {
                 onClick={() => setSimplifiedView(!simplifiedView)}
                 variant={simplifiedView ? 'contained' : 'outlined'}
                 size="small"
-                startIcon={simplifiedView ? <EyeIcon /> : <EyeOffIcon />}
-                sx={{ flexShrink: 0, fontSize: '0.8125rem' }}
+                startIcon={simplifiedView ? <EyeIcon sx={{ fontSize: '0.75rem' }} /> : <EyeOffIcon sx={{ fontSize: '0.75rem' }} />}
+                sx={{ flexShrink: 0, fontSize: '0.75rem', px: 1.5, py: 0.5, minHeight: 32 }}
               >
                 {simplifiedView ? 'Detalhado' : 'Simplificado'}
               </Button>
@@ -632,8 +621,8 @@ function TableSelectorViewContent() {
                 onClick={() => setSemanticZoomEnabled(!semanticZoomEnabled)}
                 variant={semanticZoomEnabled ? 'contained' : 'outlined'}
                 size="small"
-                startIcon={<ZoomInIcon />}
-                sx={{ flexShrink: 0, fontSize: '0.8125rem' }}
+                startIcon={<ZoomInIcon sx={{ fontSize: '0.75rem' }} />}
+                sx={{ flexShrink: 0, fontSize: '0.75rem', px: 1.5, py: 0.5, minHeight: 32 }}
               >
                 {semanticZoomEnabled ? 'Zoom Semântico' : 'Zoom Fixo'}
               </Button>
@@ -646,36 +635,36 @@ function TableSelectorViewContent() {
               sx={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: 1,
-                p: 1,
+                gap: 0.5,
+                p: 0.5,
                 border: 1,
                 borderColor: 'divider',
                 flexShrink: 0,
               }}
             >
               <Tooltip title="Zoom In">
-                <IconButton onClick={handleZoomIn} size="small">
-                  <ZoomInIcon fontSize="small" />
+                <IconButton onClick={handleZoomIn} size="small" sx={{ p: 0.5 }}>
+                  <ZoomInIcon sx={{ fontSize: '0.75rem' }} />
                 </IconButton>
               </Tooltip>
               <Tooltip title="Zoom Out">
-                <IconButton onClick={handleZoomOut} size="small">
-                  <ZoomOutIcon fontSize="small" />
+                <IconButton onClick={handleZoomOut} size="small" sx={{ p: 0.5 }}>
+                  <ZoomOutIcon sx={{ fontSize: '0.75rem' }} />
                 </IconButton>
               </Tooltip>
-              <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
+              <Divider orientation="vertical" flexItem sx={{ mx: 0.25, height: 16 }} />
               <Tooltip title="Ajustar à Tela">
-                <IconButton onClick={handleFitView} size="small">
-                  <Maximize2Icon fontSize="small" />
+                <IconButton onClick={handleFitView} size="small" sx={{ p: 0.5 }}>
+                  <Maximize2Icon sx={{ fontSize: '0.75rem' }} />
                 </IconButton>
               </Tooltip>
               <Tooltip title="Resetar Visualização">
-                <IconButton onClick={handleResetView} size="small">
-                  <RotateCcwIcon fontSize="small" />
+                <IconButton onClick={handleResetView} size="small" sx={{ p: 0.5 }}>
+                  <RotateCcwIcon sx={{ fontSize: '0.75rem' }} />
                 </IconButton>
               </Tooltip>
-              <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
-              <Typography variant="caption" sx={{ px: 1, minWidth: 45, textAlign: 'center', fontWeight: 500 }}>
+              <Divider orientation="vertical" flexItem sx={{ mx: 0.25, height: 16 }} />
+              <Typography variant="caption" sx={{ px: 1, minWidth: 35, textAlign: 'center', fontWeight: 500, fontSize: '0.75rem' }}>
                 {Math.round(zoomLevel * 100)}%
               </Typography>
             </Paper>

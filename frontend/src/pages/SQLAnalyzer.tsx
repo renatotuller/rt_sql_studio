@@ -18,6 +18,7 @@ import ReactFlow, {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { ArrowLeft, FileText, ZoomIn, ZoomOut, Maximize2, RotateCcw, LayoutGrid, Network, Grid3x3, GitBranch, EyeOff, Eye, X, Sparkles, List, Boxes } from 'lucide-react';
+import { Box, Typography } from '@mui/material';
 import { schemaApi, connectionsApi } from '../api/client';
 import DatabaseSchemaNode, { type Column } from '../components/schema/DatabaseSchemaNode';
 import CustomEdge from '../components/schema/CustomEdge';
@@ -27,7 +28,6 @@ import SQLAnalysisDialog from '../components/SQLAnalysisDialog';
 import RelationshipDetailsDialog from '../components/RelationshipDetailsDialog';
 import CascadingTableSelector from '../components/CascadingTableSelector';
 import InformativeLoading from '../components/InformativeLoading';
-import ViewSwitcher from '../components/ViewSwitcher';
 
 const nodeTypes = {
   databaseSchema: DatabaseSchemaNode,
@@ -839,23 +839,29 @@ function SQLAnalyzerContent() {
 
   return (
     <div style={{ width: '100%', maxWidth: '100%', overflowX: 'hidden' }}>
-      <div 
-        className="flex justify-between items-center bg-white dark:bg-gray-900 z-50 shadow-md border-b border-gray-200 dark:border-gray-700" 
-        style={{ 
+      <Box 
+        sx={{ 
           width: '100%', 
           position: 'sticky',
           top: 0,
-          paddingTop: '0.25rem',
-          paddingBottom: '0.25rem',
-          paddingLeft: '1rem',
-          paddingRight: '1rem',
+          px: 0.75,
+          py: 0.125,
+          backgroundColor: 'background.paper',
+          borderBottom: 1,
+          borderColor: 'divider',
+          boxShadow: 1,
+          zIndex: 50,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
         }}
       >
-        <div className="pl-4 pr-4 flex items-center gap-3 flex-wrap">
-          <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, pl: 2 }}>
+          <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.8125rem', lineHeight: 1.2, py: 0.5 }}>
             Analisador SQL: {connectionName}
-          </h1>
-          <ViewSwitcher currentView="analyzer" />
+          </Typography>
+        </Box>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'nowrap', overflowX: 'auto', pr: 2 }}>
           {/* Botão de Snap to Grid (Toggle) */}
           {nodes.length > 0 && (
             <button
@@ -987,8 +993,8 @@ function SQLAnalyzerContent() {
               </div>
             </div>
           )}
-        </div>
-      </div>
+        </Box>
+      </Box>
 
       {/* Dialog de Análise SQL */}
       <SQLAnalysisDialog

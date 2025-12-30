@@ -284,7 +284,6 @@ export default function SchemaViewer() {
   return (
     <PageLayout 
       title={`Schema: ${connectionName}`}
-      backUrl="/connections"
       currentView="standard"
       actions={
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -294,35 +293,35 @@ export default function SchemaViewer() {
             sx={{
               display: 'flex',
               alignItems: 'center',
-              gap: 1,
-              p: 1,
+              gap: 0.5,
+              p: 0.5,
               border: 1,
               borderColor: 'divider',
             }}
           >
             <Tooltip title="Zoom In">
-              <IconButton onClick={handleZoomIn} size="small">
-                <ZoomInIcon fontSize="small" />
+              <IconButton onClick={handleZoomIn} size="small" sx={{ p: 0.5 }}>
+                <ZoomInIcon sx={{ fontSize: '0.75rem' }} />
               </IconButton>
             </Tooltip>
             <Tooltip title="Zoom Out">
-              <IconButton onClick={handleZoomOut} size="small">
-                <ZoomOutIcon fontSize="small" />
+              <IconButton onClick={handleZoomOut} size="small" sx={{ p: 0.5 }}>
+                <ZoomOutIcon sx={{ fontSize: '0.75rem' }} />
               </IconButton>
             </Tooltip>
-            <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
+            <Divider orientation="vertical" flexItem sx={{ mx: 0.25, height: 16 }} />
             <Tooltip title="Ajustar à Tela">
-              <IconButton onClick={handleFitView} size="small">
-                <Maximize2Icon fontSize="small" />
+              <IconButton onClick={handleFitView} size="small" sx={{ p: 0.5 }}>
+                <Maximize2Icon sx={{ fontSize: '0.75rem' }} />
               </IconButton>
             </Tooltip>
             <Tooltip title="Resetar Visualização">
-              <IconButton onClick={handleResetView} size="small">
-                <RotateCcwIcon fontSize="small" />
+              <IconButton onClick={handleResetView} size="small" sx={{ p: 0.5 }}>
+                <RotateCcwIcon sx={{ fontSize: '0.75rem' }} />
               </IconButton>
             </Tooltip>
-            <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
-            <Typography variant="caption" sx={{ px: 1, minWidth: 45, textAlign: 'center', fontWeight: 500 }}>
+            <Divider orientation="vertical" flexItem sx={{ mx: 0.25, height: 16 }} />
+            <Typography variant="caption" sx={{ px: 1, minWidth: 35, textAlign: 'center', fontWeight: 500, fontSize: '0.75rem' }}>
               {Math.round(zoomLevel * 100)}%
             </Typography>
           </Paper>
@@ -330,12 +329,12 @@ export default function SchemaViewer() {
             onClick={handleDownloadDDL}
             variant="contained"
             size="small"
-            startIcon={<DownloadIcon fontSize="small" />}
+            startIcon={<DownloadIcon sx={{ fontSize: '0.75rem' }} />}
             sx={{
               px: 1.5,
-              py: 0.25,
-              minHeight: 'auto',
-              fontSize: '0.6875rem',
+              py: 0.5,
+              minHeight: 32,
+              fontSize: '0.75rem',
               fontWeight: 500,
               textTransform: 'none',
               borderRadius: 1.5,
