@@ -48,6 +48,7 @@ export default function Settings() {
   const [backgroundOpacity, setBackgroundOpacity] = useState<number>(0.4);
   const [savingOpacity, setSavingOpacity] = useState(false);
   const [infoDialogOpen, setInfoDialogOpen] = useState(false);
+  const [imageKey, setImageKey] = useState(0); // Para forçar re-render da imagem
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [config, setConfig] = useState<OpenAIConfig>({
@@ -181,6 +182,7 @@ export default function Settings() {
     try {
       const response = await uiApi.uploadBackground(file);
       setCurrentBackground(response.data.filename);
+      setImageKey(prev => prev + 1); // Força re-render da imagem
       setBackgroundUploaded(true);
       setTestResult({ valid: true, message: 'Background atualizado com sucesso! Recarregue a página de login para ver as alterações.' });
       setTimeout(() => {
@@ -202,15 +204,16 @@ export default function Settings() {
   };
 
   return (
-    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'auto', p: 2 }}>
-      <Box sx={{ mb: 3 }}>
-        <Typography variant="body2" color="text.secondary">
-          Configure a integração com a API da OpenAI para gerar queries SQL
-        </Typography>
-      </Box>
+    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', p: 2 }}>
+      <Box sx={{ flexGrow: 1, overflow: 'auto' }}>
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="body2" color="text.secondary">
+            Configure a integração com a API da OpenAI para gerar queries SQL
+          </Typography>
+        </Box>
 
-      <Card sx={{ mb: 3 }}>
-        <CardContent sx={{ p: 3 }}>
+        <Card sx={{ mb: 3 }}>
+          <CardContent sx={{ p: 3 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
             <Typography variant="h6" sx={{ fontWeight: 600 }}>
               Configuração OpenAI
@@ -409,20 +412,38 @@ export default function Settings() {
               <Box
                 sx={{
                   width: '100%',
-                  height: 180,
-                  borderRadius: 2,
+                  minHeight: 200,
+                  maxHeight: 500,
+                  borderRadius: 0,
                   overflow: 'hidden',
                   border: `1px solid ${theme.palette.divider}`,
                   backgroundColor: theme.palette.background.default,
-                  backgroundImage: currentBackground.startsWith('background-')
-                    ? `url(/api/ui/uploads/${currentBackground})`
-                    : `url(/${currentBackground})`,
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center',
-                  backgroundRepeat: 'no-repeat',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
                   mb: 2,
                 }}
-              />
+              >
+                {currentBackground && (
+                  <img
+                    key={imageKey}
+                    src={currentBackground.startsWith('background-') ? `/api/ui/uploads/${currentBackground}?t=${Date.now()}` : `/${currentBackground}?t=${Date.now()}`}
+                    alt="Login Background Preview"
+                    style={{
+                      maxWidth: '100%',
+                      maxHeight: '100%',
+                      height: 'auto',
+                      width: 'auto',
+                      objectFit: 'contain',
+                      display: 'block',
+                    }}
+                    onError={(e) => {
+                      console.error('Erro ao carregar imagem:', currentBackground);
+                      e.currentTarget.style.display = 'none';
+                    }}
+                  />
+                )}
+              </Box>
               <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 2 }}>
                 Background atual: {currentBackground}
               </Typography>
@@ -543,6 +564,7 @@ export default function Settings() {
           </Button>
         </DialogActions>
       </Dialog>
+      </Box>
     </Box>
   );
 }
