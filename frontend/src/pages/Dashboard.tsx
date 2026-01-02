@@ -161,7 +161,7 @@ export default function Dashboard() {
           {/* Cards de Estatísticas Gerais */}
           <Grid container spacing={2} sx={{ width: '100%' }}>
             {statCards.map((stat, index) => (
-              <Grid item xs={12} sm={6} md={3} key={index} sx={{ display: 'flex', flex: 1 }}>
+              <Grid size={{ xs: 12, sm: 6, md: 3 }} key={index} sx={{ display: 'flex', flex: 1 }}>
                 <Card
                   sx={{
                     background: `linear-gradient(135deg, ${stat.bgColor} 0%, ${alpha(stat.bgColor, 0.5)} 100%)`,
@@ -244,7 +244,7 @@ export default function Dashboard() {
       ) : (
         <Grid container spacing={2}>
           {connections.map((conn) => (
-            <Grid item xs={12} sm={6} md={4} key={conn.id}>
+            <Grid size={{ xs: 12, sm: 6, md: 4 }} key={conn.id}>
               <Card
                 sx={{
                   height: '100%',
@@ -300,7 +300,7 @@ export default function Dashboard() {
                   {conn.stats ? (
                     <Box sx={{ mb: 2 }}>
                       <Grid container spacing={1.5} sx={{ mb: 1.5 }}>
-                        <Grid item xs={6}>
+                        <Grid size={{ xs: 6 }}>
                           <Paper
                             variant="outlined"
                             sx={{
@@ -320,7 +320,7 @@ export default function Dashboard() {
                             </Typography>
                           </Paper>
                         </Grid>
-                        <Grid item xs={6}>
+                        <Grid size={{ xs: 6 }}>
                           <Paper
                             variant="outlined"
                             sx={{

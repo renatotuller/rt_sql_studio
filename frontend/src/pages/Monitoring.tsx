@@ -271,7 +271,7 @@ export default function Monitoring() {
       {/* Conteúdo com scroll */}
       <Box sx={{ flexGrow: 1, overflow: 'auto', p: 2 }}>
         <Grid container spacing={2} sx={{ mb: 3 }}>
-        <Grid item xs={12} md={4}>
+        <Grid size={{ xs: 12, md: 4 }}>
           <Card>
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center' }}>
@@ -289,7 +289,7 @@ export default function Monitoring() {
           </Card>
         </Grid>
 
-        <Grid item xs={12} md={4}>
+        <Grid size={{ xs: 12, md: 4 }}>
           <Card>
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center' }}>
@@ -307,7 +307,7 @@ export default function Monitoring() {
           </Card>
         </Grid>
 
-        <Grid item xs={12} md={4}>
+        <Grid size={{ xs: 12, md: 4 }}>
           <Card>
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center' }}>

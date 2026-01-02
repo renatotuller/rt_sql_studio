@@ -148,10 +148,10 @@ function SortableItem({ field, tableAlias, onRemove, onEditAlias, onEditSubquery
             <CodeIcon sx={{ fontSize: 14, color: 'secondary.main', flexShrink: 0 }} />
             <Typography
               variant="body2"
+              noWrap
               sx={{
                 fontFamily: 'monospace',
                 fontSize: '0.8125rem',
-                noWrap: true,
                 color: 'text.secondary',
               }}
             >
@@ -170,10 +170,10 @@ function SortableItem({ field, tableAlias, onRemove, onEditAlias, onEditSubquery
             <LayersIcon sx={{ fontSize: 14, color: 'warning.main', flexShrink: 0 }} />
             <Typography
               variant="body2"
+              noWrap
               sx={{
                 fontFamily: 'monospace',
                 fontSize: '0.8125rem',
-                noWrap: true,
               }}
             >
               {field.aggregateFunction}(
@@ -191,10 +191,10 @@ function SortableItem({ field, tableAlias, onRemove, onEditAlias, onEditSubquery
           // Expressão customizada
           <Typography
             variant="body2"
+            noWrap
             sx={{
               fontFamily: 'monospace',
               fontSize: '0.8125rem',
-              noWrap: true,
             }}
           >
             {field.expression}
@@ -209,10 +209,10 @@ function SortableItem({ field, tableAlias, onRemove, onEditAlias, onEditSubquery
           // Coluna normal
           <Typography
             variant="body2"
+            noWrap
             sx={{
               fontFamily: 'monospace',
               fontSize: '0.8125rem',
-              noWrap: true,
             }}
           >
             <Box component="span" sx={{ color: 'text.secondary' }}>

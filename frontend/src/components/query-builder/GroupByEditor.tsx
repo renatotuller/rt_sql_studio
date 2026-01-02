@@ -41,9 +41,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { GraphNode } from '../../api/client';
-import type { SelectField, QueryAST } from '../../types/query-builder';
-
-type GroupByField = NonNullable<QueryAST['groupBy']>[0];
+import type { SelectField, GroupByField } from '../../types/query-builder';
 
 interface GroupByEditorProps {
   fields: GroupByField[];
@@ -223,7 +221,6 @@ export default function GroupByEditor({
     onAdd({
       tableId: selectedTableId,
       column: selectedColumn,
-      alias: selectField?.alias,
     });
 
     // Se uma função de agregação foi selecionada, adicionar também ao SELECT

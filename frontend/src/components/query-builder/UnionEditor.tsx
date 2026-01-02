@@ -246,11 +246,11 @@ export default function UnionEditor({
                   <SwapVertIcon sx={{ fontSize: 14, color: 'secondary.main', flexShrink: 0 }} />
                   <Typography
                     variant="caption"
+                    noWrap
                     sx={{
                       fontFamily: 'monospace',
                       fontSize: '0.75rem',
                       fontWeight: 500,
-                      noWrap: true,
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
                     }}

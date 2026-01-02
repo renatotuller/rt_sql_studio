@@ -403,11 +403,11 @@ export default function JoinEditor({
                         <StorageIcon sx={{ fontSize: 14, color: 'text.secondary', flexShrink: 0 }} />
                         <Typography
                           variant="caption"
+                          noWrap
                           sx={{
                             fontFamily: 'monospace',
                             fontSize: '0.75rem',
                             fontWeight: 500,
-                            noWrap: true,
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
                           }}
@@ -419,10 +419,10 @@ export default function JoinEditor({
                       // Layout contraído: tabela base + tipo + tabela destino + condição ON (tudo em uma linha)
                       <Typography
                         variant="caption"
+                        noWrap
                         sx={{
                           fontFamily: 'monospace',
                           fontSize: '0.75rem',
-                          noWrap: true,
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
                         }}

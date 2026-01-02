@@ -6,7 +6,7 @@ import { Box, Button, Chip, IconButton, useTheme, alpha } from '@mui/material';
 import { 
   Filter as FilterIcon, 
   Layers as LayersIcon, 
-  ArrowUpDown as ArrowUpDownIcon, 
+  SwapVert as SwapVertIcon, 
   Link as LinkIcon, 
   Settings as SettingsIcon 
 } from '@mui/icons-material';
@@ -59,7 +59,7 @@ export default function QueryClauseButtons({
       color: 'green' as const,
     },
     {
-      icon: ArrowUpDownIcon,
+      icon: SwapVertIcon,
       label: 'ORDER BY',
       count: orderByCount,
       onClick: onOpenOrderBy,

@@ -1,4 +1,4 @@
-import type { SchemaInfo, GraphData, GraphNode, GraphEdge } from '../types/index.js';
+import type { SchemaInfo, GraphData, GraphNode, GraphEdge, Column } from '../types/index.js';
 
 export class GraphBuilder {
   static build(schema: SchemaInfo): GraphData {
@@ -698,7 +698,7 @@ export class GraphBuilder {
 
         // Determinar se é schema.tabela.coluna ou alias.coluna
         let tableId: string | null = null;
-        let actualColumnName: string;
+        let actualColumnName: string = columnName; // Inicializar com valor padrão
 
         if (tableOrAliasOrSchema && paramMatch[0].split('.').length === 3) {
           // Formato: schema.tabela.coluna
@@ -747,9 +747,9 @@ export class GraphBuilder {
             return tId === tableId;
           });
 
-          if (table && table.columns.some((c: any) => c.name === actualColumnName!)) {
+          if (table && actualColumnName && table.columns.some((c: any) => c.name === actualColumnName)) {
             // Verificar se já existe um relacionamento explícito (JOIN) para evitar duplicatas
-            const relationshipKey = `${viewId}_${tableId}_${actualColumnName}`;
+            const relationshipKey = `${viewId}_${tableId}_${actualColumnName || columnName}`;
             
             if (!usedRelationships.has(relationshipKey)) {
               // Tentar encontrar uma coluna da VIEW que corresponda a este relacionamento
@@ -762,9 +762,11 @@ export class GraphBuilder {
               
               // Tentar encontrar uma coluna da VIEW que corresponda ao nome da coluna da tabela
               const matchingViewCol = viewColumns.find(c => 
-                c.name.toLowerCase() === actualColumnName!.toLowerCase() ||
-                c.name.toLowerCase().includes(actualColumnName!.toLowerCase()) ||
-                actualColumnName!.toLowerCase().includes(c.name.toLowerCase())
+                actualColumnName && (
+                  c.name.toLowerCase() === actualColumnName.toLowerCase() ||
+                  c.name.toLowerCase().includes(actualColumnName.toLowerCase()) ||
+                  actualColumnName.toLowerCase().includes(c.name.toLowerCase())
+                )
               );
 
               if (matchingViewCol) {
@@ -777,26 +779,26 @@ export class GraphBuilder {
 
               if (viewColumnToUse) {
                 // Verificar se já existe um relacionamento explícito (JOIN) para evitar duplicatas
-                const relationshipKey = `${viewId}_${tableId}_${viewColumnToUse}_${actualColumnName}`;
+                const relationshipKey = `${viewId}_${tableId}_${viewColumnToUse}_${actualColumnName || columnName}`;
                 
                 if (existingRelationshipKeys.has(relationshipKey)) {
                   console.log(`[GraphBuilder] ⏭️ Relacionamento já existe (JOIN explícito), ignorando função:`, {
                     viewId,
                     tableId,
                     fromColumn: viewColumnToUse,
-                    toColumn: actualColumnName,
+                    toColumn: actualColumnName || columnName,
                   });
                   continue;
                 }
 
                 if (!usedRelationships.has(relationshipKey)) {
-                  const edgeId = `view_function_${viewId}_to_${tableId}_${viewColumnToUse}_${actualColumnName}`;
+                  const edgeId = `view_function_${viewId}_to_${tableId}_${viewColumnToUse}_${actualColumnName || columnName}`;
                   edges.push({
                     id: edgeId,
                     from: viewId,
                     to: tableId,
                     fromColumn: viewColumnToUse,
-                    toColumn: actualColumnName!,
+                    toColumn: actualColumnName || columnName,
                     label: `view_function`,
                   });
                   usedRelationships.add(relationshipKey);
@@ -804,7 +806,7 @@ export class GraphBuilder {
                   console.log(`[GraphBuilder] ✅ Edge criado da view ${viewId} para ${tableId} (via função):`, {
                     function: `${functionSchema ? `${functionSchema}.` : ''}${functionName}`,
                     fromColumn: viewColumnToUse,
-                    toColumn: actualColumnName!,
+                    toColumn: actualColumnName || columnName,
                     edgeId,
                   });
                 }

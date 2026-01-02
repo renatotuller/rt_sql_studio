@@ -70,7 +70,7 @@ router.post('/config/test', async (req: Request, res: Response) => {
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
+      const errorData = await response.json().catch(() => ({})) as { error?: { message?: string } };
       return res.status(400).json({
         valid: false,
         error: errorData.error?.message || 'API Key inválida ou sem permissão',
@@ -253,7 +253,7 @@ ${JSON.stringify(schemaContext)}`;
       const apiElapsedTime = Date.now() - apiStartTime;
       
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
+        const errorData = await response.json().catch(() => ({})) as { error?: { type?: string; message?: string } };
         const errorType = errorData.error?.type || 'unknown';
         const errorMessage = errorData.error?.message || 'Erro desconhecido';
         
@@ -322,8 +322,11 @@ ${JSON.stringify(schemaContext)}`;
         });
       }
 
-      const data = await response.json();
-      const generatedSQL = data.choices[0]?.message?.content?.trim() || '';
+      const data = await response.json() as {
+        choices?: Array<{ message?: { content?: string } }>;
+        usage?: { total_tokens?: number; prompt_tokens?: number; completion_tokens?: number };
+      };
+      const generatedSQL = data.choices?.[0]?.message?.content?.trim() || '';
 
       if (!generatedSQL) {
         console.error(`❌ [OpenAI] Resposta vazia da API`);
@@ -592,7 +595,7 @@ Tipo de banco: ${connection.type === 'mysql' ? 'MySQL' : 'SQL Server'}`;
       const apiElapsedTime = Date.now() - apiStartTime;
       
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
+        const errorData = await response.json().catch(() => ({})) as { error?: { message?: string } };
         const errorMessage = errorData.error?.message || 'Erro desconhecido';
         
         console.error(`❌ [OpenAI] Erro na API: Status ${response.status}`);
@@ -604,8 +607,11 @@ Tipo de banco: ${connection.type === 'mysql' ? 'MySQL' : 'SQL Server'}`;
         });
       }
 
-      const data = await response.json();
-      const analysis = data.choices[0]?.message?.content?.trim() || '';
+      const data = await response.json() as {
+        choices?: Array<{ message?: { content?: string } }>;
+        usage?: { total_tokens?: number };
+      };
+      const analysis = data.choices?.[0]?.message?.content?.trim() || '';
 
       if (!analysis) {
         console.error(`❌ [OpenAI] Resposta vazia da API`);

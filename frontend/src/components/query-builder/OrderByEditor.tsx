@@ -40,9 +40,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { GraphNode } from '../../api/client';
-import type { SelectField, QueryAST } from '../../types/query-builder';
-
-type OrderByField = NonNullable<QueryAST['orderBy']>[0];
+import type { SelectField, OrderByField } from '../../types/query-builder';
 
 interface OrderByEditorProps {
   fields: OrderByField[];
@@ -232,7 +230,6 @@ export default function OrderByEditor({
     onAdd({
       tableId: selectedTableId,
       column: selectedColumn,
-      alias: selectField?.alias,
       direction: selectedDirection,
     });
 

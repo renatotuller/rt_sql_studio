@@ -2196,8 +2196,7 @@ export default function QueryBuilder() {
             onClick={() => {
               setAggregateDialogOpen(false);
               setAggregateFunction('COUNT');
-              setAggregateTableId('');
-              setAggregateColumn('');
+              setAggregateFieldId('');
               setAggregateAlias('');
             }}
             variant="outlined"

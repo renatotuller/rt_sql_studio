@@ -29,7 +29,6 @@ export default function SelectDropZone({ id, children, isEmpty = false }: Select
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
-        bgcolor: 'background.paper',
         position: 'relative',
         border: isOver ? 2 : 0,
         borderColor: isOver ? 'primary.main' : 'transparent',

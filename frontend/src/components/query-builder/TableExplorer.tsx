@@ -384,11 +384,11 @@ export default function TableExplorer({
                           />
                           <Typography
                             variant="caption"
+                            noWrap
                             sx={{
                               color: 'text.secondary',
                               fontSize: '0.6rem !important',
                               maxWidth: 80,
-                              noWrap: true,
                               lineHeight: 1.1,
                               fontWeight: 400,
                             }}

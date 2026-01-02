@@ -134,8 +134,11 @@ function generateCTEs(ctes: CTEClause[], options: GeneratorOptions): string {
   const { dialect, pretty } = options;
   const newline = pretty ? '\n' : ' ';
   
+  // Verificar se algum CTE é recursivo
+  const hasRecursive = ctes.some(cte => cte.recursive);
+  const recursive = hasRecursive ? 'RECURSIVE ' : '';
+  
   const cteParts = ctes.map((cte, index) => {
-    const recursive = cte.recursive ? 'RECURSIVE ' : '';
     const columns = cte.columns && cte.columns.length > 0 
       ? ` (${cte.columns.join(', ')})` 
       : '';

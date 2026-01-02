@@ -7,10 +7,7 @@ export class MySQLIntrospector {
   async getSchema(database: string): Promise<SchemaInfo> {
     // Validar que o banco existe e está acessível
     try {
-      const [databases] = await this.pool.query<Array<{ Database: string }>>(
-        'SHOW DATABASES LIKE ?',
-        [database]
-      );
+      const [databases] = await this.pool.query('SHOW DATABASES LIKE ?', [database]) as [Array<{ Database: string }>, any];
       
       if (databases.length === 0) {
         throw new Error(`Banco de dados '${database}' não encontrado ou sem permissão de acesso`);
@@ -54,13 +51,13 @@ export class MySQLIntrospector {
 
   private async getTables(database: string): Promise<Table[]> {
     try {
-      const [tables] = await this.pool.query<Array<{ TABLE_NAME: string }>>(
+      const [tables] = await this.pool.query(
         `SELECT TABLE_NAME 
          FROM INFORMATION_SCHEMA.TABLES 
          WHERE TABLE_SCHEMA = ? AND TABLE_TYPE = 'BASE TABLE'
          ORDER BY TABLE_NAME`,
         [database]
-      );
+      ) as [Array<{ TABLE_NAME: string }>, any];
 
       const result: Table[] = [];
 
@@ -95,14 +92,7 @@ export class MySQLIntrospector {
   }
 
   private async getColumns(database: string, tableName: string): Promise<Column[]> {
-    const [columns] = await this.pool.query<Array<{
-      COLUMN_NAME: string;
-      DATA_TYPE: string;
-      IS_NULLABLE: string;
-      COLUMN_KEY: string;
-      COLUMN_DEFAULT: string | null;
-      COLUMN_COMMENT: string;
-    }>>(
+    const [columns] = await this.pool.query(
       `SELECT 
         COLUMN_NAME,
         DATA_TYPE,
@@ -114,7 +104,14 @@ export class MySQLIntrospector {
        WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?
        ORDER BY ORDINAL_POSITION`,
       [database, tableName]
-    );
+    ) as [Array<{
+      COLUMN_NAME: string;
+      DATA_TYPE: string;
+      IS_NULLABLE: string;
+      COLUMN_KEY: string;
+      COLUMN_DEFAULT: string | null;
+      COLUMN_COMMENT: string;
+    }>, any];
 
     return columns.map(col => ({
       name: col.COLUMN_NAME,
@@ -128,7 +125,7 @@ export class MySQLIntrospector {
   }
 
   private async getPrimaryKeys(database: string, tableName: string): Promise<string[]> {
-    const [keys] = await this.pool.query<Array<{ COLUMN_NAME: string }>>(
+    const [keys] = await this.pool.query(
       `SELECT COLUMN_NAME
        FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
        WHERE TABLE_SCHEMA = ? 
@@ -136,18 +133,13 @@ export class MySQLIntrospector {
          AND CONSTRAINT_NAME = 'PRIMARY'
        ORDER BY ORDINAL_POSITION`,
       [database, tableName]
-    );
+    ) as [Array<{ COLUMN_NAME: string }>, any];
 
     return keys.map(k => k.COLUMN_NAME);
   }
 
   private async getIndexes(database: string, tableName: string): Promise<Index[]> {
-    const [indexes] = await this.pool.query<Array<{
-      INDEX_NAME: string;
-      COLUMN_NAME: string;
-      NON_UNIQUE: number;
-      SEQ_IN_INDEX: number;
-    }>>(
+    const [indexes] = await this.pool.query(
       `SELECT 
         INDEX_NAME,
         COLUMN_NAME,
@@ -157,7 +149,12 @@ export class MySQLIntrospector {
        WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?
        ORDER BY INDEX_NAME, SEQ_IN_INDEX`,
       [database, tableName]
-    );
+    ) as [Array<{
+      INDEX_NAME: string;
+      COLUMN_NAME: string;
+      NON_UNIQUE: number;
+      SEQ_IN_INDEX: number;
+    }>, any];
 
     const indexMap = new Map<string, Index>();
 
@@ -176,13 +173,7 @@ export class MySQLIntrospector {
   }
 
   private async getForeignKeys(database: string): Promise<ForeignKey[]> {
-    const [fks] = await this.pool.query<Array<{
-      CONSTRAINT_NAME: string;
-      TABLE_NAME: string;
-      COLUMN_NAME: string;
-      REFERENCED_TABLE_NAME: string;
-      REFERENCED_COLUMN_NAME: string;
-    }>>(
+    const [fks] = await this.pool.query(
       `SELECT 
         kcu.CONSTRAINT_NAME,
         kcu.TABLE_NAME,
@@ -197,7 +188,13 @@ export class MySQLIntrospector {
          AND kcu.REFERENCED_TABLE_NAME IS NOT NULL
        ORDER BY kcu.TABLE_NAME, kcu.CONSTRAINT_NAME`,
       [database]
-    );
+    ) as [Array<{
+      CONSTRAINT_NAME: string;
+      TABLE_NAME: string;
+      COLUMN_NAME: string;
+      REFERENCED_TABLE_NAME: string;
+      REFERENCED_COLUMN_NAME: string;
+    }>, any];
 
     return fks.map(fk => ({
       name: fk.CONSTRAINT_NAME,
@@ -209,16 +206,16 @@ export class MySQLIntrospector {
   }
 
   private async getViews(database: string): Promise<View[]> {
-    const [views] = await this.pool.query<Array<{
-      TABLE_NAME: string;
-      VIEW_DEFINITION: string;
-    }>>(
+    const [views] = await this.pool.query(
       `SELECT TABLE_NAME, VIEW_DEFINITION
        FROM INFORMATION_SCHEMA.VIEWS
        WHERE TABLE_SCHEMA = ?
        ORDER BY TABLE_NAME`,
       [database]
-    );
+    ) as [Array<{
+      TABLE_NAME: string;
+      VIEW_DEFINITION: string;
+    }>, any];
 
     const result: View[] = [];
 
@@ -237,13 +234,7 @@ export class MySQLIntrospector {
   }
 
   private async getViewColumns(database: string, viewName: string): Promise<Column[]> {
-    const [columns] = await this.pool.query<Array<{
-      COLUMN_NAME: string;
-      DATA_TYPE: string;
-      IS_NULLABLE: string;
-      COLUMN_DEFAULT: string | null;
-      COLUMN_COMMENT: string;
-    }>>(
+    const [columns] = await this.pool.query(
       `SELECT 
         COLUMN_NAME,
         DATA_TYPE,
@@ -254,7 +245,13 @@ export class MySQLIntrospector {
        WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND TABLE_TYPE = 'VIEW'
        ORDER BY ORDINAL_POSITION`,
       [database, viewName]
-    );
+    ) as [Array<{
+      COLUMN_NAME: string;
+      DATA_TYPE: string;
+      IS_NULLABLE: string;
+      COLUMN_DEFAULT: string | null;
+      COLUMN_COMMENT: string;
+    }>, any];
 
     return columns.map(col => ({
       name: col.COLUMN_NAME,
@@ -268,13 +265,7 @@ export class MySQLIntrospector {
   }
 
   private async getTriggers(database: string): Promise<Trigger[]> {
-    const [triggers] = await this.pool.query<Array<{
-      TRIGGER_NAME: string;
-      EVENT_MANIPULATION: string;
-      EVENT_OBJECT_TABLE: string;
-      ACTION_TIMING: string;
-      ACTION_STATEMENT: string;
-    }>>(
+    const [triggers] = await this.pool.query(
       `SELECT 
         TRIGGER_NAME,
         EVENT_MANIPULATION,
@@ -285,7 +276,13 @@ export class MySQLIntrospector {
        WHERE TRIGGER_SCHEMA = ?
        ORDER BY EVENT_OBJECT_TABLE, TRIGGER_NAME`,
       [database]
-    );
+    ) as [Array<{
+      TRIGGER_NAME: string;
+      EVENT_MANIPULATION: string;
+      EVENT_OBJECT_TABLE: string;
+      ACTION_TIMING: string;
+      ACTION_STATEMENT: string;
+    }>, any];
 
     return triggers.map(t => ({
       name: t.TRIGGER_NAME,
@@ -302,9 +299,9 @@ export class MySQLIntrospector {
 
     // Tabelas (ordenadas por dependências)
     for (const table of schema.tables) {
-      const [createTable] = await this.pool.query<Array<{ 'Create Table': string }>>(
+      const [createTable] = await this.pool.query(
         `SHOW CREATE TABLE \`${database}\`.\`${table.name}\``
-      );
+      ) as [Array<{ 'Create Table': string }>, any];
       if (createTable.length > 0) {
         ddl.push(`-- Table: ${table.name}`);
         ddl.push(createTable[0]['Create Table'] + ';');
@@ -314,9 +311,9 @@ export class MySQLIntrospector {
 
     // Views
     for (const view of schema.views) {
-      const [createView] = await this.pool.query<Array<{ 'Create View': string }>>(
+      const [createView] = await this.pool.query(
         `SHOW CREATE VIEW \`${database}\`.\`${view.name}\``
-      );
+      ) as [Array<{ 'Create View': string }>, any];
       if (createView.length > 0) {
         ddl.push(`-- View: ${view.name}`);
         ddl.push(createView[0]['Create View'] + ';');
@@ -326,9 +323,9 @@ export class MySQLIntrospector {
 
     // Triggers
     for (const trigger of schema.triggers) {
-      const [createTrigger] = await this.pool.query<Array<{ 'SQL Original Statement': string }>>(
+      const [createTrigger] = await this.pool.query(
         `SHOW CREATE TRIGGER \`${database}\`.\`${trigger.name}\``
-      );
+      ) as [Array<{ 'SQL Original Statement': string }>, any];
       if (createTrigger.length > 0) {
         ddl.push(`-- Trigger: ${trigger.name}`);
         ddl.push(createTrigger[0]['SQL Original Statement'] + ';');
@@ -340,16 +337,7 @@ export class MySQLIntrospector {
   }
 
   async getActiveQueries(): Promise<any[]> {
-    const [queries] = await this.pool.query<Array<{
-      ID: number;
-      USER: string;
-      HOST: string;
-      DB: string | null;
-      COMMAND: string;
-      TIME: number;
-      STATE: string | null;
-      INFO: string | null;
-    }>>(
+    const [queries] = await this.pool.query(
       `SELECT 
         ID,
         USER,
@@ -363,7 +351,16 @@ export class MySQLIntrospector {
        WHERE COMMAND NOT IN ('Sleep', 'Binlog Dump', 'Daemon')
          AND INFO IS NOT NULL
        ORDER BY TIME DESC`
-    );
+    ) as [Array<{
+      ID: number;
+      USER: string;
+      HOST: string;
+      DB: string | null;
+      COMMAND: string;
+      TIME: number;
+      STATE: string | null;
+      INFO: string | null;
+    }>, any];
 
     return queries.map(q => ({
       id: `mysql_${q.ID}`,

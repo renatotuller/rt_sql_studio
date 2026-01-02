@@ -250,14 +250,15 @@ export default function ManualJoinCreator({
   const targetColumns = useMemo(() => {
     if (useSubqueryAsTarget && targetSubquery) {
       // Se está usando subselect, extrair colunas do SELECT do subselect
-      return targetSubquery.select
-        .filter(field => {
+      const selectFields = Array.isArray(targetSubquery.select) ? targetSubquery.select : [];
+      return selectFields
+        .filter((field: any) => {
           // Filtrar apenas campos normais (não subselects aninhados)
           if ('type' in field && field.type === 'subquery') return false;
           const normalField = field as { tableId?: string; column?: string; alias?: string };
           return normalField.column || normalField.alias;
         })
-        .map(field => {
+        .map((field: any) => {
           const normalField = field as { tableId?: string; column?: string; alias?: string };
           return {
             name: normalField.alias || normalField.column || 'coluna',
@@ -606,7 +607,7 @@ export default function ManualJoinCreator({
                     {index + 1}.
                   </Typography>
                   <Grid container spacing={1} sx={{ flex: 1 }}>
-                    <Grid item xs={6}>
+                    <Grid size={{ xs: 6 }}>
                       <FormControl fullWidth size="small">
                         <InputLabel>Coluna Origem</InputLabel>
                         <Select
@@ -624,7 +625,7 @@ export default function ManualJoinCreator({
                         </Select>
                       </FormControl>
                     </Grid>
-                    <Grid item xs={6}>
+                    <Grid size={{ xs: 6 }}>
                       <FormControl fullWidth size="small">
                         <InputLabel>Coluna Destino</InputLabel>
                         <Select

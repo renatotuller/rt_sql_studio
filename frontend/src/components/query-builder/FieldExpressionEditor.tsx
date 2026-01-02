@@ -131,7 +131,7 @@ export default function FieldExpressionEditor({
 }: FieldExpressionEditorProps) {
   const theme = useTheme();
   const isCustomField = !field.tableId || !field.column;
-  const defaultExpression = isCustomField ? '' : (field.customExpression || `${tableAlias}.${field.column}`);
+  const defaultExpression = isCustomField ? '' : (`${tableAlias}.${field.column}`);
   
   const [expression, setExpression] = useState(defaultExpression);
   const [alias, setAlias] = useState(field.alias || '');
@@ -142,9 +142,9 @@ export default function FieldExpressionEditor({
   
   const formatFunctions = getFormatFunctions(dbType);
 
-  // Gerar expressão padrão se não houver customExpression e não for coluna personalizada
+  // Gerar expressão padrão se não for coluna personalizada
   useEffect(() => {
-    if (!isCustomField && !field.customExpression && tableAlias) {
+    if (!isCustomField && tableAlias) {
       setExpression(`${tableAlias}.${field.column}`);
     }
   }, [field, tableAlias, isCustomField]);
@@ -415,7 +415,7 @@ export default function FieldExpressionEditor({
               </Typography>
               <Grid container spacing={1}>
                 {SQL_FUNCTIONS.map(func => (
-                  <Grid item xs={12} sm={6} key={func.name}>
+                  <Grid size={{ xs: 12, sm: 6 }} key={func.name}>
                     <Paper
                       component="button"
                       onClick={() => handleInsertFunction(func.name)}
@@ -485,7 +485,7 @@ export default function FieldExpressionEditor({
               </Typography>
               <Grid container spacing={1}>
                 {formatFunctions.map(format => (
-                  <Grid item xs={12} sm={6} key={format.name}>
+                  <Grid size={{ xs: 12, sm: 6 }} key={format.name}>
                     <Paper
                       component="button"
                       onClick={() => handleInsertFormat(format)}
@@ -552,7 +552,7 @@ export default function FieldExpressionEditor({
               </Typography>
               <Grid container spacing={1}>
                 {OPERATORS.map(op => (
-                  <Grid item xs={12} sm={4} key={op.symbol}>
+                  <Grid size={{ xs: 12, sm: 4 }} key={op.symbol}>
                     <Paper
                       component="button"
                       onClick={() => handleInsertOperator(op.symbol)}
