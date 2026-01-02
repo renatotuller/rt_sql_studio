@@ -137,18 +137,45 @@ export default function UnionEditor({
           </Button>
         </Box>
         <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', p: 4, textAlign: 'center' }}>
-          <Box sx={{ color: 'text.secondary' }}>
-            <Typography variant="body2" sx={{ fontWeight: 500, mb: 1 }}>
+          <Box sx={{ color: 'text.secondary', maxWidth: 500 }}>
+            <Typography variant="body2" sx={{ fontWeight: 600, mb: 2, color: 'text.primary' }}>
               Nenhum UNION adicionado
             </Typography>
-            <Typography variant="caption" display="block">
-              UNION permite combinar resultados de múltiplas queries
-            </Typography>
-            <Typography variant="caption" display="block" sx={{ mt: 1 }}>
-              UNION remove duplicatas, UNION ALL mantém todas as linhas
-            </Typography>
-            <Typography variant="caption" display="block" sx={{ mt: 1 }}>
-              Clique em "Adicionar UNION" para criar um
+            <Alert severity="info" sx={{ mb: 2, textAlign: 'left' }}>
+              <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
+                O que é UNION?
+              </Typography>
+              <Typography variant="caption" component="div">
+                UNION permite <strong>combinar resultados de múltiplas queries</strong> em uma única tabela de resultados.
+              </Typography>
+            </Alert>
+            <Box sx={{ textAlign: 'left', mb: 2 }}>
+              <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
+                Diferenças:
+              </Typography>
+              <Typography variant="caption" component="div" sx={{ mb: 0.5 }}>
+                • <strong>UNION</strong>: Remove linhas duplicadas (mais lento, mas garante unicidade)
+              </Typography>
+              <Typography variant="caption" component="div" sx={{ mb: 0.5 }}>
+                • <strong>UNION ALL</strong>: Mantém todas as linhas, incluindo duplicatas (mais rápido)
+              </Typography>
+            </Box>
+            <Alert severity="warning" sx={{ mb: 2, textAlign: 'left' }}>
+              <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
+                Requisitos importantes:
+              </Typography>
+              <Typography variant="caption" component="div" sx={{ mb: 0.5 }}>
+                1. Todas as queries devem ter o <strong>mesmo número de colunas</strong>
+              </Typography>
+              <Typography variant="caption" component="div" sx={{ mb: 0.5 }}>
+                2. Os <strong>tipos de dados</strong> devem ser compatíveis entre as colunas correspondentes
+              </Typography>
+              <Typography variant="caption" component="div">
+                3. A <strong>ordem das colunas</strong> importa (coluna 1 da query 1 será combinada com coluna 1 da query 2)
+              </Typography>
+            </Alert>
+            <Typography variant="caption" display="block" sx={{ mt: 2, fontStyle: 'italic' }}>
+              Clique em "Adicionar UNION" para começar
             </Typography>
           </Box>
         </Box>
@@ -156,7 +183,15 @@ export default function UnionEditor({
         {showAddUnion && (
           <Box sx={{ p: 2, borderTop: 1, borderColor: 'divider', bgcolor: theme.palette.mode === 'dark' ? 'grey.800' : 'grey.50' }}>
             <Alert severity="info" sx={{ mb: 2 }}>
-              A query UNION deve ter o mesmo número de colunas e tipos compatíveis com a query principal.
+              <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
+                Criando Query UNION
+              </Typography>
+              <Typography variant="caption" component="div">
+                A query UNION deve ter o <strong>mesmo número de colunas</strong> e <strong>tipos compatíveis</strong> com a query principal.
+              </Typography>
+              <Typography variant="caption" component="div" sx={{ mt: 1 }}>
+                A ordem das colunas importa: a primeira coluna desta query será combinada com a primeira coluna da query principal, e assim por diante.
+              </Typography>
             </Alert>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mb: 2 }}>
               <FormControl fullWidth size="small">
@@ -325,6 +360,20 @@ export default function UnionEditor({
 
               {isExpanded && !isEditing && (
                 <Box sx={{ px: 1.5, pb: 1.5, pt: 0, borderTop: 1, borderColor: 'divider' }}>
+                  <Alert severity="info" sx={{ mt: 1, mb: 1 }}>
+                    <Typography variant="caption" component="div">
+                      <strong>Tipo:</strong> {union.type === 'UNION' ? 'UNION (remove duplicatas)' : 'UNION ALL (mantém todas as linhas)'}
+                    </Typography>
+                    <Typography variant="caption" component="div" sx={{ mt: 0.5 }}>
+                      <strong>Colunas:</strong> {union.query.select.fields.length} coluna(s) selecionada(s)
+                    </Typography>
+                    {union.query.select.fields.length > 0 && (
+                      <Typography variant="caption" component="div" sx={{ mt: 0.5, fontFamily: 'monospace' }}>
+                        {union.query.select.fields.slice(0, 3).map(f => f.alias || f.column || 'col').join(', ')}
+                        {union.query.select.fields.length > 3 && '...'}
+                      </Typography>
+                    )}
+                  </Alert>
                   <Paper
                     elevation={0}
                     sx={{
@@ -340,9 +389,10 @@ export default function UnionEditor({
                         fontFamily: 'monospace',
                         fontSize: '0.75rem',
                         color: 'text.secondary',
+                        whiteSpace: 'pre-wrap',
                       }}
                     >
-                      {union.type} (SELECT ...)
+                      {union.type} (SELECT {union.query.select.fields.length} coluna{union.query.select.fields.length !== 1 ? 's' : ''})
                     </Typography>
                   </Paper>
                 </Box>
@@ -369,7 +419,15 @@ export default function UnionEditor({
       {showAddUnion && (
         <Box sx={{ p: 2, borderTop: 1, borderColor: 'divider', bgcolor: theme.palette.mode === 'dark' ? 'grey.800' : 'grey.50' }}>
           <Alert severity="info" sx={{ mb: 2 }}>
-            A query UNION deve ter o mesmo número de colunas e tipos compatíveis com a query principal.
+            <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
+              Criando Query UNION
+            </Typography>
+            <Typography variant="caption" component="div">
+              A query UNION deve ter o <strong>mesmo número de colunas</strong> e <strong>tipos compatíveis</strong> com a query principal.
+            </Typography>
+            <Typography variant="caption" component="div" sx={{ mt: 1 }}>
+              A ordem das colunas importa: a primeira coluna desta query será combinada com a primeira coluna da query principal, e assim por diante.
+            </Typography>
           </Alert>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mb: 2 }}>
             <FormControl fullWidth size="small">

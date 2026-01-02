@@ -29,6 +29,8 @@ import {
   VpnKey as VpnKeyIcon,
   Link as LinkIcon,
 } from '@mui/icons-material';
+import { useDraggable } from '@dnd-kit/core';
+import { CSS } from '@dnd-kit/utilities';
 import type { GraphNode, Column, GraphEdge } from '../../api/client';
 import { findTablesWithRelationships } from '../../utils/query-builder/graph-path-finder';
 
@@ -43,6 +45,249 @@ interface TableExplorerProps {
   onSearchChange: (term: string) => void;
   includedTables?: Set<string>;
   baseTableId?: string;
+  useDndKit?: boolean; // Se true, usa @dnd-kit ao invés de drag and drop nativo
+}
+
+// Componente para coluna arrastável usando @dnd-kit
+function DraggableColumn({
+  tableId,
+  column,
+  useDndKit,
+  onColumnDragStart,
+  onDragEnd,
+}: {
+  tableId: string;
+  column: Column;
+  useDndKit?: boolean;
+  onColumnDragStart: (tableId: string, column: Column) => void;
+  onDragEnd?: () => void;
+}) {
+  const theme = useTheme();
+  const dragId = `column-${tableId}-${column.name}`;
+  
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: dragId,
+    data: {
+      type: 'column',
+      tableId,
+      column: column.name,
+    },
+    disabled: !useDndKit,
+  });
+
+  const style = transform
+    ? {
+        transform: CSS.Translate.toString(transform),
+      }
+    : undefined;
+
+  // Se não usar dnd-kit, usar drag and drop nativo
+  if (!useDndKit) {
+    const handleDragStart = (e: React.DragEvent) => {
+      e.dataTransfer.setData('application/json', JSON.stringify({
+        type: 'column',
+        tableId,
+        column: {
+          name: column.name,
+          type: column.type,
+          isPrimaryKey: column.isPrimaryKey,
+          isForeignKey: column.isForeignKey,
+        },
+      }));
+      e.dataTransfer.effectAllowed = 'copy';
+      
+      const dragImage = document.createElement('div');
+      dragImage.textContent = column.name;
+      dragImage.style.position = 'absolute';
+      dragImage.style.top = '-1000px';
+      dragImage.style.left = '-1000px';
+      dragImage.style.padding = '4px 8px';
+      dragImage.style.backgroundColor = theme.palette.primary.main;
+      dragImage.style.color = theme.palette.primary.contrastText;
+      dragImage.style.borderRadius = '4px';
+      dragImage.style.fontSize = '0.75rem';
+      dragImage.style.fontWeight = '500';
+      dragImage.style.whiteSpace = 'nowrap';
+      dragImage.style.boxShadow = '0 2px 8px rgba(0,0,0,0.2)';
+      document.body.appendChild(dragImage);
+      e.dataTransfer.setDragImage(dragImage, dragImage.offsetWidth / 2, dragImage.offsetHeight / 2);
+      setTimeout(() => {
+        document.body.removeChild(dragImage);
+      }, 0);
+      
+      onColumnDragStart(tableId, column);
+    };
+
+    return (
+      <ListItemButton
+        draggable
+        onDragStart={handleDragStart}
+        onDragEnd={onDragEnd}
+        sx={{
+          px: 1,
+          py: 0.25,
+          borderRadius: 0.5,
+          cursor: 'grab',
+          fontSize: '0.65rem !important',
+          minHeight: 'auto',
+          '& .MuiListItemText-primary': {
+            fontSize: '0.65rem !important',
+          },
+          '&:active': {
+            cursor: 'grabbing',
+          },
+          '&:hover': {
+            bgcolor: 'action.hover',
+          },
+        }}
+      >
+        <ListItemIcon sx={{ minWidth: 20 }}>
+          <DragIndicatorIcon
+            sx={{
+              fontSize: 10,
+              color: 'text.disabled',
+            }}
+          />
+        </ListItemIcon>
+        {column.isPrimaryKey && (
+          <ListItemIcon sx={{ minWidth: 16 }}>
+            <VpnKeyIcon
+              sx={{
+                fontSize: 10,
+                color: 'warning.main',
+              }}
+              titleAccess="Primary Key"
+            />
+          </ListItemIcon>
+        )}
+        {column.isForeignKey && !column.isPrimaryKey && (
+          <ListItemIcon sx={{ minWidth: 16 }}>
+            <LinkIcon
+              sx={{
+                fontSize: 10,
+                color: 'primary.main',
+              }}
+              titleAccess="Foreign Key"
+            />
+          </ListItemIcon>
+        )}
+        <ListItemText
+          primary={column.name}
+          primaryTypographyProps={{
+            variant: 'body2',
+            noWrap: true,
+            sx: {
+              fontSize: '0.65rem !important',
+              lineHeight: 1.1,
+              fontWeight: 400,
+              '& .MuiTypography-root': {
+                fontSize: '0.65rem !important',
+              },
+            },
+          }}
+        />
+        <Typography
+          variant="caption"
+          noWrap
+          sx={{
+            color: 'text.secondary',
+            fontSize: '0.6rem !important',
+            maxWidth: 80,
+            lineHeight: 1.1,
+            fontWeight: 400,
+          }}
+          title={column.type}
+        >
+          {column.type}
+        </Typography>
+      </ListItemButton>
+    );
+  }
+
+  // Usar @dnd-kit
+  return (
+    <ListItemButton
+      ref={setNodeRef}
+      {...listeners}
+      {...attributes}
+      sx={{
+        px: 1,
+        py: 0.25,
+        borderRadius: 0.5,
+        cursor: isDragging ? 'grabbing' : 'grab',
+        fontSize: '0.65rem !important',
+        minHeight: 'auto',
+        opacity: isDragging ? 0.5 : 1,
+        ...(style || {}),
+        '& .MuiListItemText-primary': {
+          fontSize: '0.65rem !important',
+        },
+        '&:hover': {
+          bgcolor: 'action.hover',
+        },
+      }}
+    >
+      <ListItemIcon sx={{ minWidth: 20 }}>
+        <DragIndicatorIcon
+          sx={{
+            fontSize: 10,
+            color: 'text.disabled',
+          }}
+        />
+      </ListItemIcon>
+      {column.isPrimaryKey && (
+        <ListItemIcon sx={{ minWidth: 16 }}>
+          <VpnKeyIcon
+            sx={{
+              fontSize: 10,
+              color: 'warning.main',
+            }}
+            titleAccess="Primary Key"
+          />
+        </ListItemIcon>
+      )}
+      {column.isForeignKey && !column.isPrimaryKey && (
+        <ListItemIcon sx={{ minWidth: 16 }}>
+          <LinkIcon
+            sx={{
+              fontSize: 10,
+              color: 'primary.main',
+            }}
+            titleAccess="Foreign Key"
+          />
+        </ListItemIcon>
+      )}
+      <ListItemText
+        primary={column.name}
+        primaryTypographyProps={{
+          variant: 'body2',
+          noWrap: true,
+          sx: {
+            fontSize: '0.65rem !important',
+            lineHeight: 1.1,
+            fontWeight: 400,
+            '& .MuiTypography-root': {
+              fontSize: '0.65rem !important',
+            },
+          },
+        }}
+      />
+      <Typography
+        variant="caption"
+        noWrap
+        sx={{
+          color: 'text.secondary',
+          fontSize: '0.6rem !important',
+          maxWidth: 80,
+          lineHeight: 1.1,
+          fontWeight: 400,
+        }}
+        title={column.type}
+      >
+        {column.type}
+      </Typography>
+    </ListItemButton>
+  );
 }
 
 export default function TableExplorer({
@@ -56,6 +301,7 @@ export default function TableExplorer({
   onSearchChange,
   includedTables = new Set(),
   baseTableId,
+  useDndKit = false,
 }: TableExplorerProps) {
   const theme = useTheme();
   
@@ -93,45 +339,6 @@ export default function TableExplorer({
     });
   }, [nodes, searchTerm, includedTables, baseTableId]);
 
-  const handleDragStart = (e: React.DragEvent, tableId: string, column: Column) => {
-    e.dataTransfer.setData('application/json', JSON.stringify({
-      type: 'column',
-      tableId,
-      column: {
-        name: column.name,
-        type: column.type,
-        isPrimaryKey: column.isPrimaryKey,
-        isForeignKey: column.isForeignKey,
-      },
-    }));
-    e.dataTransfer.effectAllowed = 'copy';
-    
-    // Criar elemento customizado para mostrar apenas o nome da coluna durante o drag
-    const dragImage = document.createElement('div');
-    dragImage.textContent = column.name;
-    dragImage.style.position = 'absolute';
-    dragImage.style.top = '-1000px';
-    dragImage.style.left = '-1000px';
-    dragImage.style.padding = '4px 8px';
-    dragImage.style.backgroundColor = theme.palette.primary.main;
-    dragImage.style.color = theme.palette.primary.contrastText;
-    dragImage.style.borderRadius = '4px';
-    dragImage.style.fontSize = '0.75rem';
-    dragImage.style.fontWeight = '500';
-    dragImage.style.whiteSpace = 'nowrap';
-    dragImage.style.boxShadow = '0 2px 8px rgba(0,0,0,0.2)';
-    document.body.appendChild(dragImage);
-    
-    // Definir a imagem de drag
-    e.dataTransfer.setDragImage(dragImage, dragImage.offsetWidth / 2, dragImage.offsetHeight / 2);
-    
-    // Remover o elemento após um pequeno delay
-    setTimeout(() => {
-      document.body.removeChild(dragImage);
-    }, 0);
-    
-    onColumnDragStart(tableId, column);
-  };
 
   return (
     <Box
@@ -314,89 +521,14 @@ export default function TableExplorer({
                   {isExpanded && node.columns && (
                     <Box sx={{ ml: 3, mt: 0.5 }}>
                       {node.columns.map(column => (
-                        <ListItemButton
+                        <DraggableColumn
                           key={column.name}
-                          draggable
-                          onDragStart={(e) => handleDragStart(e, node.id, column)}
+                          tableId={node.id}
+                          column={column}
+                          useDndKit={useDndKit}
+                          onColumnDragStart={onColumnDragStart}
                           onDragEnd={onDragEnd}
-                          sx={{
-                            px: 1,
-                            py: 0.25,
-                            borderRadius: 0.5,
-                            cursor: 'grab',
-                            fontSize: '0.65rem !important',
-                            minHeight: 'auto',
-                            '& .MuiListItemText-primary': {
-                              fontSize: '0.65rem !important',
-                            },
-                            '&:active': {
-                              cursor: 'grabbing',
-                            },
-                            '&:hover': {
-                              bgcolor: 'action.hover',
-                            },
-                          }}
-                        >
-                          <ListItemIcon sx={{ minWidth: 20 }}>
-                            <DragIndicatorIcon
-                              sx={{
-                                fontSize: 10,
-                                color: 'text.disabled',
-                              }}
-                            />
-                          </ListItemIcon>
-                          {column.isPrimaryKey && (
-                            <ListItemIcon sx={{ minWidth: 16 }}>
-                              <VpnKeyIcon
-                                sx={{
-                                  fontSize: 10,
-                                  color: 'warning.main',
-                                }}
-                                titleAccess="Primary Key"
-                              />
-                            </ListItemIcon>
-                          )}
-                          {column.isForeignKey && !column.isPrimaryKey && (
-                            <ListItemIcon sx={{ minWidth: 16 }}>
-                              <LinkIcon
-                                sx={{
-                                  fontSize: 10,
-                                  color: 'primary.main',
-                                }}
-                                titleAccess="Foreign Key"
-                              />
-                            </ListItemIcon>
-                          )}
-                          <ListItemText
-                            primary={column.name}
-                            primaryTypographyProps={{
-                              variant: 'body2',
-                              noWrap: true,
-                              sx: {
-                                fontSize: '0.65rem !important',
-                                lineHeight: 1.1,
-                                fontWeight: 400,
-                                '& .MuiTypography-root': {
-                                  fontSize: '0.65rem !important',
-                                },
-                              },
-                            }}
-                          />
-                          <Typography
-                            variant="caption"
-                            noWrap
-                            sx={{
-                              color: 'text.secondary',
-                              fontSize: '0.6rem !important',
-                              maxWidth: 80,
-                              lineHeight: 1.1,
-                              fontWeight: 400,
-                            }}
-                            title={column.type}
-                          >
-                            {column.type}
-                          </Typography>
-                        </ListItemButton>
+                        />
                       ))}
                     </Box>
                   )}

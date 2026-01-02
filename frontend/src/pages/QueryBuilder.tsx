@@ -1868,6 +1868,34 @@ export default function QueryBuilder() {
         />
       </QueryClauseDialog>
       
+      <QueryClauseDialog
+        isOpen={activeDialog === 'union'}
+        onClose={() => setActiveDialog('none')}
+        title="UNION (Combinar Queries)"
+        width="xl"
+      >
+        <UnionEditor
+          unions={ast.unions || []}
+          onAdd={(union) => addUnion(union as UnionClause)}
+          onUpdate={(index, union) => {
+            const unions = ast.unions || [];
+            if (unions[index]) {
+              updateUnion(unions[index].id, union as Partial<UnionClause>);
+            }
+          }}
+          onRemove={(index) => {
+            const unions = ast.unions || [];
+            if (unions[index]) {
+              removeUnion(unions[index].id);
+            }
+          }}
+          onReorder={(unions) => reorderUnions(unions as UnionClause[])}
+          nodes={nodes}
+          edges={edges}
+          dbType={dbType}
+        />
+      </QueryClauseDialog>
+      
       {/* SQL Preview Dialog */}
       <QueryClauseDialog
         isOpen={activeDialog === 'sql'}
